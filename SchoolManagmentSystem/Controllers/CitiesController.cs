@@ -36,24 +36,24 @@ public class CitiesController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<Result<CityDto>> PostAsync([FromBody] CityCreateDto forCreateDto)
+    public async Task<Result<CityDto>> PostAsync([FromBody] CityCreateDto cityCreateDto)
     {
-        var createdCity = await _cityService.CreateCityAsync(forCreateDto);
+        var createdCity = await _cityService.CreateCityAsync(cityCreateDto);
 
         return new Result<CityDto>(createdCity);
     }
 
     [HttpPut("{id}")]
-    public async Task<Result<CityDto>> PutAsync(int id, [FromBody] CityUpdateDto forUpdateDto)
+    public async Task<Result<CityDto>> PutAsync(int id, [FromBody] CityUpdateDto cityUpdateDto)
     {
-        if (id != forUpdateDto.Id)
+        if (id != cityUpdateDto.Id)
         {
-            return new Result<CityDto>($"Route id: {id} does not match with parameter id: {forUpdateDto.Id}.");
+            return new Result<CityDto>($"Route id: {id} does not match with parameter id: {cityUpdateDto.Id}.");
         }
 
-        var updateCity = await _cityService.UpdateCityAsync(forUpdateDto);
+        var updatedCity = await _cityService.UpdateCityAsync(cityUpdateDto);
 
-        return new Result<CityDto>(updateCity);
+        return new Result<CityDto>(updatedCity);
     }
 
     [HttpDelete("{id}")]
