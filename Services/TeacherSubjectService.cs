@@ -1,13 +1,13 @@
 ﻿using AutoMapper;
 using Domain.DTOs.TeacherSubject;
 using Domain.Entities;
+using Domain.Helpers;
 using Domain.Interfaces.Services;
 using Domain.Pagniation;
 using Domain.ResourceParameters;
 using Domain.Responses;
 using Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using Domain.Helpers;
 
 namespace Services;
 
@@ -20,7 +20,7 @@ public class TeacherSubjectService : ITeacherSubjectService
     {
         _mapper = mapper;
         _context = context;
-    }   
+    }
 
     public async Task<GetBaseResponse<TeacherSubjectDto>> GetTeacherSubjectsAsync(TeacherSubjectResourceParameters teacherSubjectResourceParameters)
     {

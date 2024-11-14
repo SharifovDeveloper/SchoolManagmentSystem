@@ -1,6 +1,8 @@
-﻿using Domain.DTOs.City;
+﻿using Domain.Common;
+using Domain.DTOs.City;
 using Domain.Interfaces.Services;
 using Domain.ResourceParameters;
+using Domain.Responses;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Domain.Controllers;
@@ -17,47 +19,47 @@ public class CitiesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<CityDto>>> GetCitiesAsync(
+    public async Task<Result<GetBaseResponse<CityDto>>> GetCitiesAsync(
         [FromQuery] CityResourceParameters cityResource)
     {
-        var cityReviews = await _cityService.GetCitiesAsync(cityResource); ;
+        var cityReviews = await _cityService.GetCitiesAsync(cityResource);
 
-        return Ok(cityReviews);
+        return new Result<GetBaseResponse<CityDto>>(cityReviews);
     }
 
     [HttpGet("{id}", Name = "GetCityById")]
-    public async Task<ActionResult<CityDto>> GetCityByIdAsync(int id)
+    public async Task<Result<CityDto>> GetCityByIdAsync(int id)
     {
         var city = await _cityService.GetCityByIdAsync(id);
 
-        return Ok(city);
+        return new Result<CityDto>(city);
     }
+
     [HttpPost]
-    public async Task<ActionResult> PostAsync([FromBody] CityCreateDto forCreateDto)
+    public async Task<Result<CityDto>> PostAsync([FromBody] CityCreateDto forCreateDto)
     {
         var createdCity = await _cityService.CreateCityAsync(forCreateDto);
 
-        return CreatedAtAction("GetCityById", new { id = createdCity.Id }, createdCity);
+        return new Result<CityDto>(createdCity);
     }
+
     [HttpPut("{id}")]
-    public async Task<ActionResult> PutAsync(int id, [FromBody] CityUpdateDto forUpdateDto)
+    public async Task<Result<CityDto>> PutAsync(int id, [FromBody] CityUpdateDto forUpdateDto)
     {
         if (id != forUpdateDto.Id)
         {
-            return BadRequest(
-                $"Route id: {id} does not match with parameter id: {forUpdateDto.Id}.");
+            return new Result<CityDto>($"Route id: {id} does not match with parameter id: {forUpdateDto.Id}.");
         }
 
         var updateCity = await _cityService.UpdateCityAsync(forUpdateDto);
 
-        return Ok(updateCity);
+        return new Result<CityDto>(updateCity);
     }
 
     [HttpDelete("{id}")]
-    public async Task<ActionResult> DeleteAsync(int id)
+    public async Task<Result<string>> DeleteAsync(int id)
     {
         await _cityService.DeleteCityAsync(id);
-
-        return NoContent();
+        return new Result<string>("City successfully deleted");
     }
 }
