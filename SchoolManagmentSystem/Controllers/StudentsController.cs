@@ -1,7 +1,8 @@
-﻿using Domain.DTOs.Student;
-using Domain.DTOs.Subject;
+﻿using Domain.Common;
+using Domain.DTOs.Student;
 using Domain.Interfaces.Services;
 using Domain.ResourceParameters;
+using Domain.Responses;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Domain.Controllers;
@@ -18,66 +19,60 @@ public class StudentsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<StudentDto>>> GetStudentsAsync(
+    public async Task<Result<GetBaseResponse<StudentDto>>> GetStudentsAsync(
         [FromQuery] StudentResourceParameters studentResourceParameters)
     {
         var students = await _studentService.GetStudentsAsync(studentResourceParameters);
-        return Ok(students);
+        return new Result<GetBaseResponse<StudentDto>>(students);
     }
     [HttpGet("top10bysubjectmark")]
-    public async Task<ActionResult<IEnumerable<StudentDto>>> GetTop10StudentsBySubjectMarkAsync(int subjectId)
+    public async Task<Result<List<string>>> GetTop10StudentsBySubjectMarkAsync(int subjectId)
     {
-        var teachers = await _studentService.GetTop10StudentsBySubjectMarkAsync(subjectId);
-        return Ok(teachers);
+        var students = await _studentService.GetTop10StudentsBySubjectMarkAsync(subjectId);
+        return new Result<List<string>>(students);
     }
 
     [HttpGet("{studentId}/subjects")]
-    public async Task<ActionResult<IEnumerable<SubjectDto>>> GetSubjectsByStudentIdAsync(int studentId)
+    public async Task<Result<List<string>>> GetSubjectsByStudentIdAsync(int studentId)
     {
         var subjects = await _studentService.GetSubjectsByStudentIdAsync(studentId);
-
-        if (subjects == null || !subjects.Any())
-        {
-            return NotFound(new { Message = $"No subjects found for student with ID {studentId}." });
-        }
-
-        return Ok(subjects);
+        return new Result<List<string>>(subjects);
     }
 
     [HttpGet("{id}", Name = "GetStudentById")]
-    public async Task<ActionResult<StudentDto>> GetStudentByIdAsync(int id)
+    public async Task<Result<StudentDto>> GetStudentByIdAsync(int id)
     {
         var student = await _studentService.GetStudentByIdAsync(id);
 
-        return Ok(student);
+        return new Result<StudentDto>(student);
     }
 
     [HttpPost]
-    public async Task<ActionResult<StudentDto>> PostAsync([FromBody] StudentCreateDto studentCreateDto)
+    public async Task<Result<StudentDto>> PostAsync([FromBody] StudentCreateDto studentCreateDto)
     {
         var createdStudent = await _studentService.CreateStudentAsync(studentCreateDto);
 
-        return CreatedAtAction("GetStudentById", new { id = createdStudent.Id }, createdStudent);
+        return new Result<StudentDto>(createdStudent);
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<StudentDto>> PutAsync(int id, [FromBody] StudentUpdateDto studentUpdateDto)
+    public async Task<Result<StudentDto>> PutAsync(int id, [FromBody] StudentUpdateDto studentUpdateDto)
     {
         if (id != studentUpdateDto.Id)
         {
-            return BadRequest($"Route id: {id} does not match with parameter id: {studentUpdateDto.Id}.");
+            return new Result<StudentDto>($"Route id: {id} does not match with parameter id: {studentUpdateDto.Id}.");
         }
 
         var updatedStudent = await _studentService.UpdateStudentAsync(studentUpdateDto);
 
-        return Ok(updatedStudent);
+        return new Result<StudentDto>(updatedStudent);
     }
 
     [HttpDelete("{id}")]
-    public async Task<ActionResult> DeleteAsync(int id)
+    public async Task<Result<string>> DeleteAsync(int id)
     {
         await _studentService.DeleteStudentAsync(id);
 
-        return NoContent();
+        return new Result<string>("Department successfully deleted");
     }
 }

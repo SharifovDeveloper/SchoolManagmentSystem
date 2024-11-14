@@ -36,11 +36,11 @@ namespace Domain.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<DepartmentDto>> PostAsync([FromBody] DepartmentCreateDto departmentCreateDto)
+        public async Task<Result<DepartmentDto>> PostAsync([FromBody] DepartmentCreateDto departmentCreateDto)
         {
             var createdDepartment = await _departmentService.CreateDepartmentAsync(departmentCreateDto);
 
-            return CreatedAtAction("GetDepartmentById", new { id = createdDepartment.Id }, createdDepartment);
+            return new Result<DepartmentDto>(createdDepartment);
         }
 
         [HttpPut("{id}")]
