@@ -1,4 +1,5 @@
-﻿using Domain.DTOs.Department;
+﻿using Domain.Common;
+using Domain.DTOs.Department;
 using Domain.Interfaces.Services;
 using Domain.ResourceParameters;
 using Domain.Responses;
@@ -18,20 +19,20 @@ namespace Domain.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<GetBaseResponse<DepartmentDto>>> GetDepartmentsAsync(
+        public async Task<Result<GetBaseResponse<DepartmentDto>>> GetDepartmentsAsync(
             [FromQuery] DepartmentResourceParameters departmentResource)
         {
             var departments = await _departmentService.GetDepartmentsAsync(departmentResource);
 
-            return Ok(departments);
+            return new Result<GetBaseResponse<DepartmentDto>>(departments);
         }
 
         [HttpGet("{id}", Name = "GetDepartmentById")]
-        public async Task<ActionResult<DepartmentDto>> GetDepartmentByIdAsync(int id)
+        public async Task<Result<DepartmentDto>> GetDepartmentByIdAsync(int id)
         {
             var department = await _departmentService.GetDepartmentByIdAsync(id);
 
-            return Ok(department);
+            return new Result<DepartmentDto>(department);
         }
 
         [HttpPost]
@@ -43,24 +44,24 @@ namespace Domain.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<ActionResult> PutAsync(int id, [FromBody] DepartmentUpdateDto departmentUpdateDto)
+        public async Task<Result<DepartmentDto>> PutAsync(int id, [FromBody] DepartmentUpdateDto departmentUpdateDto)
         {
             if (id != departmentUpdateDto.Id)
             {
-                return BadRequest($"Route id: {id} does not match with parameter id: {departmentUpdateDto.Id}.");
+                return new Result<DepartmentDto>($"Route id: {id} does not match with parameter id: {departmentUpdateDto.Id}.");
             }
 
             var updatedDepartment = await _departmentService.UpdateDepartmentAsync(departmentUpdateDto);
 
-            return Ok(updatedDepartment);
+            return new Result<DepartmentDto>(updatedDepartment);
         }
 
         [HttpDelete("{id}")]
-        public async Task<ActionResult> DeleteAsync(int id)
+        public async Task<Result<string>> DeleteAsync(int id)
         {
             await _departmentService.DeleteDepartmentAsync(id);
 
-            return NoContent();
+            return new Result<string>("Department successfully deleted");
         }
     }
 }

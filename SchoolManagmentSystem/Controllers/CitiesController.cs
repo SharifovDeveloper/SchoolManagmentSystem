@@ -22,9 +22,9 @@ public class CitiesController : ControllerBase
     public async Task<Result<GetBaseResponse<CityDto>>> GetCitiesAsync(
         [FromQuery] CityResourceParameters cityResource)
     {
-        var cityReviews = await _cityService.GetCitiesAsync(cityResource);
+        var cities = await _cityService.GetCitiesAsync(cityResource);
 
-        return new Result<GetBaseResponse<CityDto>>(cityReviews);
+        return new Result<GetBaseResponse<CityDto>>(cities);
     }
 
     [HttpGet("{id}", Name = "GetCityById")]
