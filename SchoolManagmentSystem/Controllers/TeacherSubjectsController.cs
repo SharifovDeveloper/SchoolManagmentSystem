@@ -1,6 +1,8 @@
-﻿using Domain.DTOs.TeacherSubject;
+﻿using Domain.Common;
+using Domain.DTOs.TeacherSubject;
 using Domain.Interfaces.Services;
 using Domain.ResourceParameters;
+using Domain.Responses;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Domain.Controllers;
@@ -17,52 +19,47 @@ public class TeacherSubjectsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<TeacherSubjectDto>>> GetTeacherSubjectsAsync(
+    public async Task<Result<GetBaseResponse<TeacherSubjectDto>>> GetTeacherSubjectsAsync(
         [FromQuery] TeacherSubjectResourceParameters teacherSubjectResourceParameters)
     {
         var teacherSubjects = await _teacherSubjectService.GetTeacherSubjectsAsync(teacherSubjectResourceParameters);
-        return Ok(teacherSubjects);
+        return new Result<GetBaseResponse<TeacherSubjectDto>>(teacherSubjects);
     }
 
     [HttpGet("{id}", Name = "GetTeacherSubjectById")]
-    public async Task<ActionResult<TeacherSubjectDto>> GetTeacherSubjectByIdAsync(int id)
+    public async Task<Result<TeacherSubjectDto>> GetTeacherSubjectByIdAsync(int id)
     {
         var teacherSubject = await _teacherSubjectService.GetTeacherSubjectByIdAsync(id);
 
-        if (teacherSubject == null)
-        {
-            return NotFound(new { Message = $"Teacher subject with ID {id} not found." });
-        }
-
-        return Ok(teacherSubject);
+        return new Result<TeacherSubjectDto>(teacherSubject);
     }
 
     [HttpPost]
-    public async Task<ActionResult<TeacherSubjectDto>> PostAsync([FromBody] TeacherSubjectCreateDto teacherSubjectCreateDto)
+    public async Task<Result<TeacherSubjectDto>> PostAsync([FromBody] TeacherSubjectCreateDto teacherSubjectCreateDto)
     {
         var createdTeacherSubject = await _teacherSubjectService.CreateTeacherSubjectAsync(teacherSubjectCreateDto);
 
-        return CreatedAtAction("GetTeacherSubjectById", new { id = createdTeacherSubject.Id }, createdTeacherSubject);
+        return new Result<TeacherSubjectDto>(createdTeacherSubject);
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<TeacherSubjectDto>> PutAsync(int id, [FromBody] TeacherSubjectUpdateDto teacherSubjectUpdateDto)
+    public async Task<Result<TeacherSubjectDto>> PutAsync(int id, [FromBody] TeacherSubjectUpdateDto teacherSubjectUpdateDto)
     {
         if (id != teacherSubjectUpdateDto.Id)
         {
-            return BadRequest($"Route id: {id} does not match with parameter id: {teacherSubjectUpdateDto.Id}.");
+            return new Result<TeacherSubjectDto>($"Route id: {id} does not match with parameter id: {teacherSubjectUpdateDto.Id}.");
         }
 
         var updatedTeacherSubject = await _teacherSubjectService.UpdateTeacherSubjectAsync(teacherSubjectUpdateDto);
 
-        return Ok(updatedTeacherSubject);
+        return new Result<TeacherSubjectDto>(updatedTeacherSubject);
     }
 
     [HttpDelete("{id}")]
-    public async Task<ActionResult> DeleteAsync(int id)
+    public async Task<Result<string>> DeleteAsync(int id)
     {
         await _teacherSubjectService.DeleteTeacherSubjectAsync(id);
 
-        return NoContent();
+        return new Result<string>("Teacher successfully deleted");
     }
 }
