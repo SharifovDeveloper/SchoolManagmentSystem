@@ -18,8 +18,8 @@ public class StudentSubjectService : IStudentSubjectService
 
     public StudentSubjectService(IMapper mapper, SchoolManagmentDbContext context)
     {
-        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
-        _context = context ?? throw new ArgumentNullException(nameof(context));
+        _mapper = mapper;
+        _context = context;
     }
 
     public async Task<GetBaseResponse<StudentSubjectDto>> GetStudentSubjectsAsync(StudentSubjectResourceParameters studentSubjectResourceParameters)

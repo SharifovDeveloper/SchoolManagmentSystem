@@ -18,8 +18,8 @@ public class CityService : ICityService
 
     public CityService(IMapper mapper, SchoolManagmentDbContext context)
     {
-        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
-        _context = context ?? throw new ArgumentNullException(nameof(context));
+        _mapper = mapper;
+        _context = context;
     }
 
     public async Task<GetBaseResponse<CityDto>> GetCitiesAsync(CityResourceParameters cityResourceParameters)
