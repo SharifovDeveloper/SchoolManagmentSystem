@@ -18,7 +18,7 @@ public class Program
             .WriteTo.File(new CustomJsonFormatter(), "logs/logs.txt", rollingInterval: RollingInterval.Day)
             .WriteTo.File(new CustomJsonFormatter(), "logs/error_.txt", Serilog.Events.LogEventLevel.Error, rollingInterval: RollingInterval.Day)
             .CreateLogger();
-       
+
         var builder = WebApplication.CreateBuilder(args);
 
         builder.Host.UseSerilog();
