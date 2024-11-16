@@ -46,12 +46,7 @@ public class SubjectsController : ControllerBase
     [HttpPut("{id}")]
     public async Task<Result<SubjectDto>> PutAsync(int id, [FromBody] SubjectUpdateDto subjectUpdateDto)
     {
-        if (id != subjectUpdateDto.Id)
-        {
-            return new Result<SubjectDto>($"Route id: {id} does not match with parameter id: {subjectUpdateDto.Id}.");
-        }
-
-        var updatedSubject = await _subjectService.UpdateSubjectAsync(subjectUpdateDto);
+        var updatedSubject = await _subjectService.UpdateSubjectAsync(id, subjectUpdateDto);
 
         return new Result<SubjectDto>(updatedSubject);
     }

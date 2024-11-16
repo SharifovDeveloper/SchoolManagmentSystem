@@ -23,6 +23,7 @@ public class TeacherSubjectsController : ControllerBase
         [FromQuery] TeacherSubjectResourceParameters teacherSubjectResourceParameters)
     {
         var teacherSubjects = await _teacherSubjectService.GetTeacherSubjectsAsync(teacherSubjectResourceParameters);
+       
         return new Result<GetBaseResponse<TeacherSubjectDto>>(teacherSubjects);
     }
 
@@ -45,12 +46,7 @@ public class TeacherSubjectsController : ControllerBase
     [HttpPut("{id}")]
     public async Task<Result<TeacherSubjectDto>> PutAsync(int id, [FromBody] TeacherSubjectUpdateDto teacherSubjectUpdateDto)
     {
-        if (id != teacherSubjectUpdateDto.Id)
-        {
-            return new Result<TeacherSubjectDto>($"Route id: {id} does not match with parameter id: {teacherSubjectUpdateDto.Id}.");
-        }
-
-        var updatedTeacherSubject = await _teacherSubjectService.UpdateTeacherSubjectAsync(teacherSubjectUpdateDto);
+        var updatedTeacherSubject = await _teacherSubjectService.UpdateTeacherSubjectAsync(id, teacherSubjectUpdateDto);
 
         return new Result<TeacherSubjectDto>(updatedTeacherSubject);
     }

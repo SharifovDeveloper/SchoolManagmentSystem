@@ -24,6 +24,12 @@ public class TeacherSubjectService : ITeacherSubjectService
 
     public async Task<GetBaseResponse<TeacherSubjectDto>> GetTeacherSubjectsAsync(TeacherSubjectResourceParameters teacherSubjectResourceParameters)
     {
+
+        if (teacherSubjectResourceParameters.TeacherId.HasValue || teacherSubjectResourceParameters.SubjectId.HasValue)
+        {
+            await ValidateTeacherAndSubjectAsync(teacherSubjectResourceParameters.TeacherId, teacherSubjectResourceParameters.SubjectId);
+        }
+
         var query = _context.TeacherSubjects
             .AsNoTracking()
             .Include(ts => ts.Teacher)
@@ -64,14 +70,17 @@ public class TeacherSubjectService : ITeacherSubjectService
         );
 
         var teacherSubjectDtos = _mapper.Map<List<TeacherSubjectDto>>(teacherSubjects);
+
         var paginatedResult = new PaginatedList<TeacherSubjectDto>(
             teacherSubjectDtos,
             teacherSubjects.TotalCount,
             teacherSubjects.CurrentPage,
             teacherSubjects.PageSize
         );
+
         return paginatedResult.ToResponse();
     }
+
     public async Task<TeacherSubjectDto?> GetTeacherSubjectByIdAsync(int id)
     {
         var teacherSubject = await _context.TeacherSubjects
@@ -80,45 +89,82 @@ public class TeacherSubjectService : ITeacherSubjectService
             .Include(ts => ts.Subject)
             .FirstOrDefaultAsync(ts => ts.Id == id);
 
-        return teacherSubject == null ? null : _mapper.Map<TeacherSubjectDto>(teacherSubject);
-    }
-    public async Task<TeacherSubjectDto> CreateTeacherSubjectAsync(TeacherSubjectCreateDto teacherSubjectCreateDto)
-    {
-        var teacherSubjectEntity = _mapper.Map<TeacherSubject>(teacherSubjectCreateDto);
+        if (teacherSubject == null)
+            throw new KeyNotFoundException($"Teacher subject with ID {id} not found.");
 
-        teacherSubjectEntity.CreatedDate = DateTime.Now;
-        teacherSubjectEntity.LastUpdatedDate = DateTime.Now;
+        var teacherSubjectDto = _mapper.Map<TeacherSubjectDto>(teacherSubject);
 
-        await _context.TeacherSubjects.AddAsync(teacherSubjectEntity);
-        await _context.SaveChangesAsync();
-
-        var teacherSubjectDto = _mapper.Map<TeacherSubjectDto>(teacherSubjectEntity);
         return teacherSubjectDto;
     }
 
-
-    public async Task<TeacherSubjectDto> UpdateTeacherSubjectAsync(TeacherSubjectUpdateDto teacherSubjectUpdateDto)
+    public async Task<TeacherSubjectDto> CreateTeacherSubjectAsync(TeacherSubjectCreateDto teacherSubjectCreateDto)
     {
-        var teacherSubjectEntity = await _context.TeacherSubjects.FindAsync(teacherSubjectUpdateDto.Id);
+        await ValidateTeacherAndSubjectAsync(teacherSubjectCreateDto.TeacherId, teacherSubjectCreateDto.SubjectId);
 
-        if (teacherSubjectEntity == null)
-            return null;
+        var teacherSubject = _mapper.Map<TeacherSubject>(teacherSubjectCreateDto);
 
-        _mapper.Map(teacherSubjectUpdateDto, teacherSubjectEntity);
-        teacherSubjectEntity.LastUpdatedDate = DateTime.Now;
+        teacherSubject.CreatedDate = DateTime.Now;
+        teacherSubject.LastUpdatedDate = DateTime.Now;
+
+        await _context.TeacherSubjects.AddAsync(teacherSubject);
+        await _context.SaveChangesAsync();
+
+        var teacherSubjectDto = _mapper.Map<TeacherSubjectDto>(teacherSubject);
+
+        return teacherSubjectDto;
+    }
+
+    public async Task<TeacherSubjectDto> UpdateTeacherSubjectAsync(int id, TeacherSubjectUpdateDto teacherSubjectUpdateDto)
+    {
+        var teacherSubject = await _context.TeacherSubjects.FindAsync(id);
+
+        if (teacherSubject is null)
+            throw new KeyNotFoundException($"Teacher subject with ID {id} not found.");
+
+        await ValidateTeacherAndSubjectAsync(teacherSubjectUpdateDto.TeacherId, teacherSubjectUpdateDto.SubjectId);
+
+        _mapper.Map(teacherSubjectUpdateDto, teacherSubject);
+        teacherSubject.LastUpdatedDate = DateTime.Now;
 
         await _context.SaveChangesAsync();
-        return _mapper.Map<TeacherSubjectDto>(teacherSubjectEntity);
+
+        var teacherSubjectDto = _mapper.Map<TeacherSubjectDto>(teacherSubject);
+
+        return teacherSubjectDto;
     }
 
     public async Task DeleteTeacherSubjectAsync(int id)
     {
-        var teacherSubject = await _context.TeacherSubjects.FirstOrDefaultAsync(ts => ts.Id == id);
+        var teacherSubject = await _context.TeacherSubjects.FindAsync(id);
 
-        if (teacherSubject == null) return;
+        if (teacherSubject == null)
+            throw new KeyNotFoundException($"Teacher subject with ID {id} not found.");
 
         teacherSubject.IsDeleted = true;
+
         _context.TeacherSubjects.Update(teacherSubject);
         await _context.SaveChangesAsync();
+    }
+
+    private async Task ValidateTeacherAndSubjectAsync(int? teacherId, int? subjectId)
+    {
+        var errors = new List<string>();
+
+        if(teacherId.HasValue)
+        {
+           var teacherExists = await _context.Teachers.AnyAsync(t => t.Id == teacherId);
+           if (!teacherExists)
+               errors.Add($"Teacher with ID {teacherId} not found.");
+        }
+
+        if (subjectId.HasValue)
+        {
+            var subjectExists = await _context.Subjects.AnyAsync(s => s.Id == subjectId.Value);
+            if (!subjectExists)
+                errors.Add($"Subject with ID {subjectId.Value} not found.");
+        }
+
+        if (errors.Any())
+            throw new KeyNotFoundException(string.Join(" ", errors));
     }
 }

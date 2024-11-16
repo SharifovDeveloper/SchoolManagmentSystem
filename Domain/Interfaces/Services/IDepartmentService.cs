@@ -9,6 +9,6 @@ public interface IDepartmentService
     Task<GetBaseResponse<DepartmentDto>> GetDepartmentsAsync(DepartmentResourceParameters departmentResourceParameters);
     Task<DepartmentDto?> GetDepartmentByIdAsync(int id);
     Task<DepartmentDto> CreateDepartmentAsync(DepartmentCreateDto departmentCreateDto);
-    Task<DepartmentDto> UpdateDepartmentAsync(DepartmentUpdateDto departmentUpdateDto);
+    Task<DepartmentDto> UpdateDepartmentAsync(int id, DepartmentUpdateDto departmentUpdateDto);
     Task DeleteDepartmentAsync(int id);
 }

@@ -23,12 +23,14 @@ public class StudentsController : ControllerBase
         [FromQuery] StudentResourceParameters studentResourceParameters)
     {
         var students = await _studentService.GetStudentsAsync(studentResourceParameters);
+       
         return new Result<GetBaseResponse<StudentDto>>(students);
     }
     [HttpGet("top10bysubjectmark")]
     public async Task<Result<List<string>>> GetTop10StudentsBySubjectMarkAsync(int subjectId)
     {
         var students = await _studentService.GetTop10StudentsBySubjectMarkAsync(subjectId);
+      
         return new Result<List<string>>(students);
     }
 
@@ -36,6 +38,7 @@ public class StudentsController : ControllerBase
     public async Task<Result<List<string>>> GetSubjectsByStudentIdAsync(int studentId)
     {
         var subjects = await _studentService.GetSubjectsByStudentIdAsync(studentId);
+       
         return new Result<List<string>>(subjects);
     }
 
@@ -58,12 +61,7 @@ public class StudentsController : ControllerBase
     [HttpPut("{id}")]
     public async Task<Result<StudentDto>> PutAsync(int id, [FromBody] StudentUpdateDto studentUpdateDto)
     {
-        if (id != studentUpdateDto.Id)
-        {
-            return new Result<StudentDto>($"Route id: {id} does not match with parameter id: {studentUpdateDto.Id}.");
-        }
-
-        var updatedStudent = await _studentService.UpdateStudentAsync(studentUpdateDto);
+        var updatedStudent = await _studentService.UpdateStudentAsync(id, studentUpdateDto);
 
         return new Result<StudentDto>(updatedStudent);
     }

@@ -1,13 +1,14 @@
 ﻿using AutoMapper;
 using Domain.DTOs.Teacher;
 using Domain.Entities;
+using Domain.Enums;
+using Domain.Helpers;
 using Domain.Interfaces.Services;
 using Domain.Pagniation;
 using Domain.ResourceParameters;
 using Domain.Responses;
 using Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using Domain.Helpers;
 
 namespace Services;
 
@@ -21,6 +22,7 @@ public class TeacherService : ITeacherService
         _mapper = mapper;
         _context = context;
     }
+   
     public async Task<GetBaseResponse<TeacherDto>> GetTeachersAsync(TeacherResourceParameters teacherResourceParameters)
     {
         var query = _context.Teachers
@@ -55,7 +57,7 @@ public class TeacherService : ITeacherService
         if (teacherResourceParameters.CityId.HasValue)
         {
             query = query.Where(t => t.CityId == teacherResourceParameters.CityId.Value);
-        }      
+        }
 
         if (!string.IsNullOrEmpty(teacherResourceParameters.OrderBy))
         {
@@ -77,6 +79,7 @@ public class TeacherService : ITeacherService
 
         return paginatedResult.ToResponse();
     }
+  
     public async Task<List<string>> GetTeachersForTop5StudentsWithHighestMarksAsync()
     {
         var topStudents = await _context.StudentSubjects
@@ -101,6 +104,7 @@ public class TeacherService : ITeacherService
 
         return teacherNames;
     }
+   
     public async Task<List<string>> GetTeachersForTop5StudentsWithLowestMarksAsync()
     {
         var bottomStudents = await _context.StudentSubjects
@@ -125,8 +129,14 @@ public class TeacherService : ITeacherService
 
         return teacherNames;
     }
+ 
     public async Task<List<string>> GetSubjectsByTeacherIdAsync(int teacherId)
     {
+        var teacher = await _context.Teachers.FindAsync(teacherId);
+
+        if (teacher is null)
+            throw new KeyNotFoundException($"Teacher with ID {teacherId} was not found.");
+
         var subjectNames = await _context.TeacherSubjects
             .AsNoTracking()
             .Where(ts => ts.TeacherId == teacherId && !ts.IsDeleted)
@@ -135,11 +145,15 @@ public class TeacherService : ITeacherService
 
         return subjectNames;
     }
+   
     public async Task<TeacherDto?> GetTeacherByIdAsync(int id)
     {
         var teacher = await _context.Teachers
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id);
+
+        if (teacher == null)
+            throw new KeyNotFoundException($"Teacher with ID {id} not found.");
 
         var teacherDto = _mapper.Map<TeacherDto>(teacher);
 
@@ -148,39 +162,67 @@ public class TeacherService : ITeacherService
 
     public async Task<TeacherDto> CreateTeacherAsync(TeacherCreateDto teacherCreateDto)
     {
-        var teacherEntity = _mapper.Map<Teacher>(teacherCreateDto);
+        await ValidateTeacherDataAsync(teacherCreateDto.CityId, teacherCreateDto.Gender);
 
-        teacherEntity.CreatedDate = DateTime.Now;
-        teacherEntity.LastUpdatedDate = DateTime.Now;
+        var teacher = _mapper.Map<Teacher>(teacherCreateDto);
 
-        await _context.Teachers.AddAsync(teacherEntity);
+        teacher.CreatedDate = DateTime.Now;
+        teacher.LastUpdatedDate = DateTime.Now;
+
+        await _context.Teachers.AddAsync(teacher);
         await _context.SaveChangesAsync();
 
-        var teacherDto = _mapper.Map<TeacherDto>(teacherEntity);
+        var teacherDto = _mapper.Map<TeacherDto>(teacher);
 
         return teacherDto;
     }
 
-    public async Task<TeacherDto> UpdateTeacherAsync(TeacherUpdateDto teacherUpdateDto)
+    public async Task<TeacherDto> UpdateTeacherAsync(int id, TeacherUpdateDto teacherUpdateDto)
     {
-        var teacherEntity = await _context.Teachers.FindAsync(teacherUpdateDto.Id);
+        var teacher = await _context.Teachers.FindAsync(id);
 
-        _mapper.Map(teacherUpdateDto, teacherEntity);
+        if (teacher == null)
+            throw new KeyNotFoundException($"Teacher with ID {id} not found.");
 
-        teacherEntity.LastUpdatedDate = DateTime.Now;
+        await ValidateTeacherDataAsync(teacherUpdateDto.CityId, teacherUpdateDto.Gender);
+
+        _mapper.Map(teacherUpdateDto, teacher);
+
+        teacher.LastUpdatedDate = DateTime.Now;
 
         await _context.SaveChangesAsync();
 
-        var teacherDto = _mapper.Map<TeacherDto>(teacherEntity);
+        var teacherDto = _mapper.Map<TeacherDto>(teacher);
+        
         return teacherDto;
     }
 
     public async Task DeleteTeacherAsync(int id)
     {
-        var teacher = await _context.Teachers.FirstOrDefaultAsync(x => x.Id == id);
+        var teacher = await _context.Teachers.FindAsync(id);
+
+        if (teacher == null)
+            throw new KeyNotFoundException($"Teacher with ID {id} not found.");
+
         teacher.IsDeleted = true;
 
         _context.Teachers.Update(teacher);
         await _context.SaveChangesAsync();
+    }
+
+    private async Task ValidateTeacherDataAsync(int cityId, Gender gender)
+    {
+        var errors = new List<string>();
+
+        var cityExists = await _context.Cities.AnyAsync(c => c.Id == cityId);
+
+        if (!cityExists)
+            errors.Add($"City with ID {cityId} not found.");
+
+        if (!Enum.IsDefined(typeof(Gender), gender))
+            errors.Add($"Invalid gender value: {gender}");
+
+        if (errors.Any())
+            throw new KeyNotFoundException(string.Join(" ", errors));
     }
 }

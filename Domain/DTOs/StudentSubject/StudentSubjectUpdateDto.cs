@@ -1,6 +1,7 @@
 ﻿namespace Domain.DTOs.StudentSubject;
 
 public record StudentSubjectUpdateDto(
-    int Id,
+    int StudentId,
+    int SubjectId,
     double Mark
 );

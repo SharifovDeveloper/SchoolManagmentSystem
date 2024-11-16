@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Domain.DTOs.Student;
 using Domain.Entities;
+using Domain.Enums;
 using Domain.Helpers;
 using Domain.Interfaces.Services;
 using Domain.Pagniation;
@@ -98,6 +99,11 @@ public class StudentService : IStudentService
 
     public async Task<List<string>> GetTop10StudentsBySubjectMarkAsync(int subjectId)
     {
+        var subject = await _context.Subjects.FindAsync(subjectId);
+
+        if (subject is null)
+            throw new KeyNotFoundException($"Subject with ID {subjectId} was not found.");
+
         var studentNames = await _context.StudentSubjects
             .Where(ss => ss.SubjectId == subjectId)
             .Include(ss => ss.Student)
@@ -112,6 +118,11 @@ public class StudentService : IStudentService
 
     public async Task<List<string>> GetSubjectsByStudentIdAsync(int studentId)
     {
+        var student = await _context.Students.FindAsync(studentId);
+
+        if (student is null)
+            throw new KeyNotFoundException($"Student with ID {studentId} was not found.");
+
         var subjectNames = await _context.StudentSubjects
             .AsNoTracking()
             .Where(ts => ts.StudentId == studentId && !ts.IsDeleted)
@@ -127,6 +138,9 @@ public class StudentService : IStudentService
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id);
 
+        if (student == null)
+            throw new KeyNotFoundException($"Student with ID {id} was not found.");
+
         var studentDto = _mapper.Map<StudentDto>(student);
 
         return studentDto;
@@ -134,45 +148,73 @@ public class StudentService : IStudentService
 
     public async Task<StudentDto> CreateStudentAsync(StudentCreateDto studentCreateDto)
     {
-        var studentEntity = _mapper.Map<Student>(studentCreateDto);
+        await ValidateStudentDataAsync(studentCreateDto.CityId, studentCreateDto.DepartmentId, studentCreateDto.Gender);
 
-        studentEntity.CreatedDate = DateTime.Now;
-        studentEntity.LastUpdatedDate = DateTime.Now;
+        var student = _mapper.Map<Student>(studentCreateDto);
 
-        await _context.Students.AddAsync(studentEntity);
+        student.CreatedDate = DateTime.Now;
+        student.LastUpdatedDate = DateTime.Now;
+
+        await _context.Students.AddAsync(student);
         await _context.SaveChangesAsync();
 
-        var studentDto = _mapper.Map<StudentDto>(studentEntity);
+        var studentDto = _mapper.Map<StudentDto>(student);
 
         return studentDto;
     }
 
-    public async Task<StudentDto> UpdateStudentAsync(StudentUpdateDto studentUpdateDto)
+    public async Task<StudentDto> UpdateStudentAsync(int id, StudentUpdateDto studentUpdateDto)
     {
-        var studentEntity = await _context.Students.FindAsync(studentUpdateDto.Id);
+        var student = await _context.Students.FindAsync(id);
 
-        if (studentEntity == null)
-            return null;
+        if (student is null)
+            throw new KeyNotFoundException($"Student with ID {id} was not found.");
 
-        _mapper.Map(studentUpdateDto, studentEntity);
+        await ValidateStudentDataAsync(studentUpdateDto.CityId, studentUpdateDto.DepartmentId, studentUpdateDto.Gender);
 
-        studentEntity.LastUpdatedDate = DateTime.Now;
+        _mapper.Map(studentUpdateDto, student);
+
+        student.LastUpdatedDate = DateTime.Now;
 
         await _context.SaveChangesAsync();
 
-        var studentDto = _mapper.Map<StudentDto>(studentEntity);
+        var studentDto = _mapper.Map<StudentDto>(student);
 
         return studentDto;
     }
 
     public async Task DeleteStudentAsync(int id)
     {
-        var student = await _context.Students.FirstOrDefaultAsync(x => x.Id == id);
-        if (student == null) return;
+        var student = await _context.Students.FindAsync(id);
+
+        if (student is null)
+            throw new KeyNotFoundException($"Student with ID {id} was not found.");
 
         student.IsDeleted = true;
 
         _context.Students.Update(student);
         await _context.SaveChangesAsync();
     }
+
+    private async Task ValidateStudentDataAsync(int cityId, int departmentId, Gender gender)
+    {
+        var errors = new List<string>();
+
+        var cityExists = await _context.Cities.AnyAsync(c => c.Id == cityId);
+
+        if (!cityExists)
+            errors.Add($"City with ID {cityId} not found.");
+
+        var departmentExists = await _context.Departments.AnyAsync(d => d.Id == departmentId);
+
+        if (!departmentExists)
+            errors.Add($"Department with ID {departmentId} not found.");
+
+        if (!Enum.IsDefined(typeof(Gender), gender))
+            errors.Add($"Invalid gender value: {gender}");
+
+        if (errors.Any())
+            throw new KeyNotFoundException(string.Join(" ", errors));
+    }
+
 }

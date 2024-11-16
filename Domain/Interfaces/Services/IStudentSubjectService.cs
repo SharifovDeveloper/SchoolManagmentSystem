@@ -9,6 +9,6 @@ public interface IStudentSubjectService
     Task<GetBaseResponse<StudentSubjectDto>> GetStudentSubjectsAsync(StudentSubjectResourceParameters studentSubjectResourceParameters);
     Task<StudentSubjectDto?> GetStudentSubjectByIdAsync(int id);
     Task<StudentSubjectDto> CreateStudentSubjectAsync(StudentSubjectCreateDto schoolSubjectCreateDto);
-    Task<StudentSubjectDto> UpdateStudentSubjectAsync(StudentSubjectUpdateDto schoolSubjectUpdateDto);
+    Task<StudentSubjectDto> UpdateStudentSubjectAsync(int id, StudentSubjectUpdateDto schoolSubjectUpdateDto);
     Task DeleteStudentSubjectAsync(int id);
 }

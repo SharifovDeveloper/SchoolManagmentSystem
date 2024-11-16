@@ -30,24 +30,36 @@ public class ErrorHandlerMiddleware
     private async Task HandleAsync(HttpContext context, Exception exception)
     {
         context.Response.ContentType = "application/json";
+
         context.Response.StatusCode = exception switch
         {
             EntityNotFoundException => (int)HttpStatusCode.NotFound,
+            KeyNotFoundException => (int)HttpStatusCode.NotFound,
             _ => (int)HttpStatusCode.InternalServerError
         };
 
         var response = new
         {
             StatusCode = context.Response.StatusCode,
-            Error = exception is EntityNotFoundException ? "Not Found" : "Internal Server Error",
-            Message = exception is EntityNotFoundException entityNotFoundEx
-                ? entityNotFoundEx.Message
-                : "Something went wrong, please try again later."
+            Error = exception switch
+            {
+                EntityNotFoundException => "Not Found",
+                KeyNotFoundException => "Not Found",
+                _ => "Internal Server Error"
+            },
+            Message = exception switch
+            {
+                EntityNotFoundException entityNotFoundEx => entityNotFoundEx.Message,
+                KeyNotFoundException keyNotFoundEx => keyNotFoundEx.Message,
+                _ => "Something went wrong, please try again later."
+            }
         };
 
         var result = JsonSerializer.Serialize(response);
+
         await context.Response.WriteAsync(result);
 
         _logger.LogError(exception, "An error occurred: {Message}", exception.Message);
     }
+
 }

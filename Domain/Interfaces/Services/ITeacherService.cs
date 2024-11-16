@@ -14,6 +14,6 @@ public interface ITeacherService
     Task<List<string>> GetSubjectsByTeacherIdAsync(int teacherId);
     Task<TeacherDto?> GetTeacherByIdAsync(int id);
     Task<TeacherDto> CreateTeacherAsync(TeacherCreateDto teacherCreateDto);
-    Task<TeacherDto> UpdateTeacherAsync(TeacherUpdateDto teacherUpdateDto);
+    Task<TeacherDto> UpdateTeacherAsync(int id, TeacherUpdateDto teacherUpdateDto);
     Task DeleteTeacherAsync(int id);
 }

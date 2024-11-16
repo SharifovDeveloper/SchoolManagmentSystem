@@ -46,12 +46,7 @@ public class CitiesController : ControllerBase
     [HttpPut("{id}")]
     public async Task<Result<CityDto>> PutAsync(int id, [FromBody] CityUpdateDto cityUpdateDto)
     {
-        if (id != cityUpdateDto.Id)
-        {
-            return new Result<CityDto>($"Route id: {id} does not match with parameter id: {cityUpdateDto.Id}.");
-        }
-
-        var updatedCity = await _cityService.UpdateCityAsync(cityUpdateDto);
+        var updatedCity = await _cityService.UpdateCityAsync(id, cityUpdateDto);
 
         return new Result<CityDto>(updatedCity);
     }

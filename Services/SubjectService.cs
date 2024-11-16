@@ -68,6 +68,9 @@ public class SubjectService : ISubjectService
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id);
 
+        if (subject == null)
+            throw new KeyNotFoundException($"Subject with ID {id} not found.");
+
         var subjectDto = _mapper.Map<SubjectDto>(subject);
 
         return subjectDto;
@@ -75,42 +78,42 @@ public class SubjectService : ISubjectService
 
     public async Task<SubjectDto> CreateSubjectAsync(SubjectCreateDto subjectCreateDto)
     {
-        var subjectEntity = _mapper.Map<Subject>(subjectCreateDto);
+        var subject = _mapper.Map<Subject>(subjectCreateDto);
 
-        subjectEntity.CreatedDate = DateTime.Now;
-        subjectEntity.LastUpdatedDate = DateTime.Now;
+        subject.CreatedDate = DateTime.Now;
+        subject.LastUpdatedDate = DateTime.Now;
 
-        await _context.Subjects.AddAsync(subjectEntity);
+        await _context.Subjects.AddAsync(subject);
         await _context.SaveChangesAsync();
 
-        var subjectDto = _mapper.Map<SubjectDto>(subjectEntity);
+        var subjectDto = _mapper.Map<SubjectDto>(subject);
 
         return subjectDto;
     }
 
-    public async Task<SubjectDto> UpdateSubjectAsync(SubjectUpdateDto subjectUpdateDto)
+    public async Task<SubjectDto> UpdateSubjectAsync(int id, SubjectUpdateDto subjectUpdateDto)
     {
-        var subjectEntity = await _context.Subjects.FindAsync(subjectUpdateDto.Id);
+        var subject = await _context.Subjects.FindAsync(id);
 
-        if (subjectEntity == null)
-        {
-            throw new KeyNotFoundException($"Subject with ID {subjectUpdateDto.Id} not found.");
-        }
+        if (subject == null)
+            throw new KeyNotFoundException($"Subject with ID {id} not found.");
 
-        _mapper.Map(subjectUpdateDto, subjectEntity);
+        _mapper.Map(subjectUpdateDto, subject);
 
-        subjectEntity.LastUpdatedDate = DateTime.Now;
+        subject.LastUpdatedDate = DateTime.Now;
 
         await _context.SaveChangesAsync();
 
-        var subjectDto = _mapper.Map<SubjectDto>(subjectEntity);
+        var subjectDto = _mapper.Map<SubjectDto>(subject);
 
         return subjectDto;
     }
 
     public async Task DeleteSubjectAsync(int id)
     {
-        var subject = await _context.Subjects.FirstOrDefaultAsync(x => x.Id == id);
+        var subject = await _context.Subjects.FindAsync(id);
+        if (subject == null)
+            throw new KeyNotFoundException($"Subject with ID {id} not found.");
 
         subject.IsDeleted = true;
 

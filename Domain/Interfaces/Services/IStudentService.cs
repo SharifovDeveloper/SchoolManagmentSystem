@@ -11,6 +11,6 @@ public interface IStudentService
     Task<List<string>> GetSubjectsByStudentIdAsync(int studentId);
     Task<StudentDto?> GetStudentByIdAsync(int id);
     Task<StudentDto> CreateStudentAsync(StudentCreateDto studentCreateDto);
-    Task<StudentDto> UpdateStudentAsync(StudentUpdateDto studentUpdateDto);
+    Task<StudentDto> UpdateStudentAsync(int id, StudentUpdateDto studentUpdateDto);
     Task DeleteStudentAsync(int id);
 }

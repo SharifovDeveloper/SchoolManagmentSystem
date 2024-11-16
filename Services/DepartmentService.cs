@@ -1,13 +1,13 @@
 ﻿using AutoMapper;
 using Domain.DTOs.Department;
 using Domain.Entities;
+using Domain.Helpers;
 using Domain.Interfaces.Services;
 using Domain.Pagniation;
 using Domain.ResourceParameters;
 using Domain.Responses;
 using Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using Domain.Helpers;
 
 namespace Services;
 
@@ -76,6 +76,9 @@ public class DepartmentService : IDepartmentService
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id);
 
+        if (department == null)
+            throw new KeyNotFoundException($"Department with ID {id} was not found.");
+
         var departmentDto = _mapper.Map<DepartmentDto>(department);
 
         return departmentDto;
@@ -83,36 +86,44 @@ public class DepartmentService : IDepartmentService
 
     public async Task<DepartmentDto> CreateDepartmentAsync(DepartmentCreateDto departmentCreateDto)
     {
-        var departmentEntity = _mapper.Map<Department>(departmentCreateDto);
+        var department = _mapper.Map<Department>(departmentCreateDto);
 
-        departmentEntity.CreatedDate = DateTime.Now;
-        departmentEntity.LastUpdatedDate = DateTime.Now;
+        department.CreatedDate = DateTime.Now;
+        department.LastUpdatedDate = DateTime.Now;
 
-        await _context.Departments.AddAsync(departmentEntity);
+        await _context.Departments.AddAsync(department);
         await _context.SaveChangesAsync();
 
-        var departmentDto = _mapper.Map<DepartmentDto>(departmentEntity);
+        var departmentDto = _mapper.Map<DepartmentDto>(department);
 
         return departmentDto;
     }
 
-    public async Task<DepartmentDto> UpdateDepartmentAsync(DepartmentUpdateDto departmentUpdateDto)
+    public async Task<DepartmentDto> UpdateDepartmentAsync(int id, DepartmentUpdateDto departmentUpdateDto)
     {
-        var departmentEntity = await _context.Departments.FindAsync(departmentUpdateDto.Id);
+        var department = await _context.Departments.FindAsync(id);
 
-        _mapper.Map(departmentUpdateDto, departmentEntity);
+        if (department == null)
+            throw new KeyNotFoundException($"Department with ID {id} was not found.");
 
-        departmentEntity.LastUpdatedDate = DateTime.Now;
+        _mapper.Map(departmentUpdateDto, department);
+
+        department.LastUpdatedDate = DateTime.Now;
 
         await _context.SaveChangesAsync();
 
-        var departmentDto = _mapper.Map<DepartmentDto>(departmentEntity);
+        var departmentDto = _mapper.Map<DepartmentDto>(department);
+
         return departmentDto;
     }
 
     public async Task DeleteDepartmentAsync(int id)
     {
-        var department = await _context.Departments.FirstOrDefaultAsync(x => x.Id == id);
+        var department = await _context.Departments.FindAsync(id);
+
+        if (department is null)
+            throw new KeyNotFoundException($"Department with ID {id} was not found.");
+
         department.IsDeleted = true;
 
         _context.Departments.Update(department);

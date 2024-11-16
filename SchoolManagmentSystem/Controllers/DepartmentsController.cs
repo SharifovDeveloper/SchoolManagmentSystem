@@ -46,12 +46,7 @@ namespace Domain.Controllers
         [HttpPut("{id}")]
         public async Task<Result<DepartmentDto>> PutAsync(int id, [FromBody] DepartmentUpdateDto departmentUpdateDto)
         {
-            if (id != departmentUpdateDto.Id)
-            {
-                return new Result<DepartmentDto>($"Route id: {id} does not match with parameter id: {departmentUpdateDto.Id}.");
-            }
-
-            var updatedDepartment = await _departmentService.UpdateDepartmentAsync(departmentUpdateDto);
+            var updatedDepartment = await _departmentService.UpdateDepartmentAsync(id, departmentUpdateDto);
 
             return new Result<DepartmentDto>(updatedDepartment);
         }

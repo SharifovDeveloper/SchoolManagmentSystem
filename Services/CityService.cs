@@ -66,6 +66,9 @@ public class CityService : ICityService
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id);
 
+        if (city is null)
+            throw new KeyNotFoundException($"City with ID {id} was not found.");
+
         var cityDto = _mapper.Map<CityDto>(city);
 
         return cityDto;
@@ -73,36 +76,43 @@ public class CityService : ICityService
 
     public async Task<CityDto> CreateCityAsync(CityCreateDto cityCreateDto)
     {
-        var cityEntity = _mapper.Map<City>(cityCreateDto);
+        var city = _mapper.Map<City>(cityCreateDto);
 
-        cityEntity.CreatedDate = DateTime.Now;
-        cityEntity.LastUpdatedDate = DateTime.Now;
+        city.CreatedDate = DateTime.Now;
+        city.LastUpdatedDate = DateTime.Now;
 
-        await _context.Cities.AddAsync(cityEntity);
+        await _context.Cities.AddAsync(city);
         await _context.SaveChangesAsync();
 
-        var cityDto = _mapper.Map<CityDto>(cityEntity);
+        var cityDto = _mapper.Map<CityDto>(city);
 
         return cityDto;
     }
 
-    public async Task<CityDto> UpdateCityAsync(CityUpdateDto cityUpdateDto)
+    public async Task<CityDto> UpdateCityAsync(int id, CityUpdateDto cityUpdateDto)
     {
-        var cityEntity = await _context.Cities.FindAsync(cityUpdateDto.Id);
+        var city = await _context.Cities.FindAsync(id);
 
-        _mapper.Map(cityUpdateDto, cityEntity);
+        if (city is null)
+            throw new KeyNotFoundException($"City with ID {id} was not found.");
 
-        cityEntity.LastUpdatedDate = DateTime.Now;
+        _mapper.Map(cityUpdateDto, city);
+
+        city.LastUpdatedDate = DateTime.Now;
 
         await _context.SaveChangesAsync();
 
-        var cityDto = _mapper.Map<CityDto>(cityEntity);
+        var cityDto = _mapper.Map<CityDto>(city);
+
         return cityDto;
     }
 
     public async Task DeleteCityAsync(int id)
     {
-        var city = await _context.Cities.FirstOrDefaultAsync(x => x.Id == id);
+        var city = await _context.Cities.FindAsync(id);
+
+        if (city == null)
+            throw new KeyNotFoundException($"City with ID {id} was not found.");
 
         city.IsDeleted = true;
 
