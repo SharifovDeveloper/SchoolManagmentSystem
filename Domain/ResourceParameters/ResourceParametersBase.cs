@@ -1,6 +1,4 @@
-﻿using Swashbuckle.AspNetCore.Annotations;
-
-namespace Domain.ResourceParameters;
+﻿namespace Domain.ResourceParameters;
 
 public abstract record ResourceParametersBase
 {

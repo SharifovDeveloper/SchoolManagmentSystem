@@ -1,8 +1,6 @@
-﻿using Domain.DTOs.Subject;
-using Domain.DTOs.Teacher;
+﻿using Domain.DTOs.Teacher;
 using Domain.ResourceParameters;
 using Domain.Responses;
-using System.Xml.Schema;
 
 namespace Domain.Interfaces.Services;
 
