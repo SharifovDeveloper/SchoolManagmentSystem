@@ -2,6 +2,7 @@
 using Domain.DTOs.Student;
 using Domain.Entities;
 using Domain.Enums;
+using Domain.Exeptions;
 using Domain.Helpers;
 using Domain.Interfaces.Services;
 using Domain.Pagniation;
@@ -56,7 +57,7 @@ public class StudentService : IStudentService
         var subject = await _context.Subjects.FindAsync(subjectId);
 
         if (subject == null)
-            throw new KeyNotFoundException($"Subject with ID {subjectId} was not found.");
+            throw new EntityNotFoundException($"Subject with ID {subjectId} was not found.");
 
         var studentNames = await _context.StudentSubjects
             .Where(ss => ss.SubjectId == subjectId)
@@ -75,7 +76,7 @@ public class StudentService : IStudentService
         var student = await _context.Students.FindAsync(studentId);
 
         if (student == null)
-            throw new KeyNotFoundException($"Student with ID {studentId} was not found.");
+            throw new EntityNotFoundException($"Student with ID {studentId} was not found.");
 
         var subjectNames = await _context.StudentSubjects
             .AsNoTracking()
@@ -93,7 +94,7 @@ public class StudentService : IStudentService
             .FirstOrDefaultAsync(x => x.Id == id);
 
         if (student == null)
-            throw new KeyNotFoundException($"Student with ID {id} was not found.");
+            throw new EntityNotFoundException($"Student with ID {id} was not found.");
 
         return _mapper.Map<StudentDto>(student);
     }
@@ -117,7 +118,7 @@ public class StudentService : IStudentService
         var student = await _context.Students.FindAsync(id);
 
         if (student == null)
-            throw new KeyNotFoundException($"Student with ID {id} was not found.");
+            throw new EntityNotFoundException($"Student with ID {id} was not found.");
 
         await ValidateStudentDataAsync(studentUpdateDto.CityId, studentUpdateDto.DepartmentId, studentUpdateDto.Gender);
 
@@ -134,7 +135,7 @@ public class StudentService : IStudentService
         var student = await _context.Students.FindAsync(id);
 
         if (student == null)
-            throw new KeyNotFoundException($"Student with ID {id} was not found.");
+            throw new EntityNotFoundException($"Student with ID {id} was not found.");
 
         student.IsDeleted = true;
 
@@ -160,7 +161,7 @@ public class StudentService : IStudentService
             errors.Add($"Invalid gender value: {gender}");
 
         if (errors.Any())
-            throw new KeyNotFoundException(string.Join(" ", errors));
+            throw new EntityNotFoundException(string.Join(" ", errors));
     }
 
     private IQueryable<Student> ApplyFilters(IQueryable<Student> query, StudentResourceParameters parameters)

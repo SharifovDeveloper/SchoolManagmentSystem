@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Domain.DTOs.City;
 using Domain.Entities;
+using Domain.Exeptions;
 using Domain.Helpers;
 using Domain.Interfaces.Services;
 using Domain.Pagniation;
@@ -54,7 +55,7 @@ public class CityService : ICityService
             .FirstOrDefaultAsync(c => c.Id == id);
 
         if (city == null)
-            throw new KeyNotFoundException($"City with ID {id} was not found.");
+            throw new EntityNotFoundException($"City with ID {id} was not found.");
 
         return _mapper.Map<CityDto>(city);
     }
@@ -76,7 +77,7 @@ public class CityService : ICityService
         var city = await _context.Cities.FindAsync(id);
 
         if (city == null)
-            throw new KeyNotFoundException($"City with ID {id} was not found.");
+            throw new EntityNotFoundException($"City with ID {id} was not found.");
 
         _mapper.Map(cityUpdateDto, city);
         city.LastUpdatedDate = DateTime.Now;
@@ -91,7 +92,7 @@ public class CityService : ICityService
         var city = await _context.Cities.FindAsync(id);
 
         if (city == null)
-            throw new KeyNotFoundException($"City with ID {id} was not found.");
+            throw new EntityNotFoundException($"City with ID {id} was not found.");
 
         city.IsDeleted = true;
 

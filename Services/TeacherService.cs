@@ -2,6 +2,7 @@
 using Domain.DTOs.Teacher;
 using Domain.Entities;
 using Domain.Enums;
+using Domain.Exeptions;
 using Domain.Helpers;
 using Domain.Interfaces.Services;
 using Domain.Pagniation;
@@ -100,7 +101,7 @@ public class TeacherService : ITeacherService
         var teacher = await _context.Teachers.FindAsync(teacherId);
 
         if (teacher == null)
-            throw new KeyNotFoundException($"Teacher with ID {teacherId} was not found.");
+            throw new EntityNotFoundException($"Teacher with ID {teacherId} was not found.");
 
         var subjectNames = await _context.TeacherSubjects
             .AsNoTracking()
@@ -118,7 +119,7 @@ public class TeacherService : ITeacherService
             .FirstOrDefaultAsync(x => x.Id == id);
 
         if (teacher == null)
-            throw new KeyNotFoundException($"Teacher with ID {id} was not found.");
+            throw new EntityNotFoundException($"Teacher with ID {id} was not found.");
 
         return _mapper.Map<TeacherDto>(teacher);
     }
@@ -142,7 +143,7 @@ public class TeacherService : ITeacherService
         var teacher = await _context.Teachers.FindAsync(id);
 
         if (teacher == null)
-            throw new KeyNotFoundException($"Teacher with ID {id} was not found.");
+            throw new EntityNotFoundException($"Teacher with ID {id} was not found.");
 
         await ValidateTeacherDataAsync(teacherUpdateDto.CityId, teacherUpdateDto.Gender);
 
@@ -159,7 +160,7 @@ public class TeacherService : ITeacherService
         var teacher = await _context.Teachers.FindAsync(id);
 
         if (teacher == null)
-            throw new KeyNotFoundException($"Teacher with ID {id} was not found.");
+            throw new EntityNotFoundException($"Teacher with ID {id} was not found.");
 
         teacher.IsDeleted = true;
 
@@ -180,7 +181,7 @@ public class TeacherService : ITeacherService
             errors.Add($"Invalid gender value: {gender}");
 
         if (errors.Any())
-            throw new KeyNotFoundException(string.Join(" ", errors));
+            throw new EntityNotFoundException(string.Join(" ", errors));
     }
 
     private IQueryable<Teacher> ApplyFilters(IQueryable<Teacher> query, TeacherResourceParameters parameters)

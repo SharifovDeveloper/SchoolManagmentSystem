@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Domain.DTOs.Department;
 using Domain.Entities;
+using Domain.Exeptions;
 using Domain.Helpers;
 using Domain.Interfaces.Services;
 using Domain.Pagniation;
@@ -55,7 +56,7 @@ public class DepartmentService : IDepartmentService
             .FirstOrDefaultAsync(d => d.Id == id);
 
         if (department == null)
-            throw new KeyNotFoundException($"Department with ID {id} was not found.");
+            throw new EntityNotFoundException($"Department with ID {id} was not found.");
 
         return _mapper.Map<DepartmentDto>(department);
     }
@@ -77,7 +78,7 @@ public class DepartmentService : IDepartmentService
         var department = await _context.Departments.FindAsync(id);
 
         if (department == null)
-            throw new KeyNotFoundException($"Department with ID {id} was not found.");
+            throw new EntityNotFoundException($"Department with ID {id} was not found.");
 
         _mapper.Map(departmentUpdateDto, department);
         department.LastUpdatedDate = DateTime.Now;
@@ -92,7 +93,7 @@ public class DepartmentService : IDepartmentService
         var department = await _context.Departments.FindAsync(id);
 
         if (department == null)
-            throw new KeyNotFoundException($"Department with ID {id} was not found.");
+            throw new EntityNotFoundException($"Department with ID {id} was not found.");
 
         department.IsDeleted = true;
 

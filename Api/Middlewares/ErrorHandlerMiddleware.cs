@@ -61,5 +61,4 @@ public class ErrorHandlerMiddleware
 
         _logger.LogError(exception, "An error occurred: {Message}", exception.Message);
     }
-
 }

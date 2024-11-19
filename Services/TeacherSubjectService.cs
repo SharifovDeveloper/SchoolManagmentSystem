@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Domain.DTOs.TeacherSubject;
 using Domain.Entities;
+using Domain.Exeptions;
 using Domain.Helpers;
 using Domain.Interfaces.Services;
 using Domain.Pagniation;
@@ -64,7 +65,7 @@ public class TeacherSubjectService : ITeacherSubjectService
             .FirstOrDefaultAsync(ts => ts.Id == id);
 
         if (teacherSubject == null)
-            throw new KeyNotFoundException($"TeacherSubject with ID {id} was not found.");
+            throw new EntityNotFoundException($"TeacherSubject with ID {id} was not found.");
 
         return _mapper.Map<TeacherSubjectDto>(teacherSubject);
     }
@@ -88,7 +89,7 @@ public class TeacherSubjectService : ITeacherSubjectService
         var teacherSubject = await _context.TeacherSubjects.FindAsync(id);
 
         if (teacherSubject == null)
-            throw new KeyNotFoundException($"TeacherSubject with ID {id} was not found.");
+            throw new EntityNotFoundException($"TeacherSubject with ID {id} was not found.");
 
         await ValidateTeacherAndSubjectAsync(updateDto.TeacherId, updateDto.SubjectId);
 
@@ -105,7 +106,7 @@ public class TeacherSubjectService : ITeacherSubjectService
         var teacherSubject = await _context.TeacherSubjects.FindAsync(id);
 
         if (teacherSubject == null)
-            throw new KeyNotFoundException($"TeacherSubject with ID {id} was not found.");
+            throw new EntityNotFoundException($"TeacherSubject with ID {id} was not found.");
 
         teacherSubject.IsDeleted = true;
         _context.TeacherSubjects.Update(teacherSubject);
@@ -131,7 +132,7 @@ public class TeacherSubjectService : ITeacherSubjectService
         }
 
         if (errors.Any())
-            throw new KeyNotFoundException(string.Join(" ", errors));
+            throw new EntityNotFoundException(string.Join(" ", errors));
     }
 
     private IQueryable<TeacherSubject> ApplyFilters(IQueryable<TeacherSubject> query, TeacherSubjectResourceParameters parameters)

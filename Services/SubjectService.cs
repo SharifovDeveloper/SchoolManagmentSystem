@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Domain.DTOs.Subject;
 using Domain.Entities;
+using Domain.Exeptions;
 using Domain.Helpers;
 using Domain.Interfaces.Services;
 using Domain.Pagniation;
@@ -49,7 +50,7 @@ public class SubjectService : ISubjectService
             .FirstOrDefaultAsync(x => x.Id == id);
 
         if (subject == null)
-            throw new KeyNotFoundException($"Subject with ID {id} not found.");
+            throw new EntityNotFoundException($"Subject with ID {id} not found.");
 
         return _mapper.Map<SubjectDto>(subject);
     }
@@ -72,7 +73,7 @@ public class SubjectService : ISubjectService
         var subject = await _context.Subjects.FindAsync(id);
 
         if (subject == null)
-            throw new KeyNotFoundException($"Subject with ID {id} not found.");
+            throw new EntityNotFoundException($"Subject with ID {id} not found.");
 
         _mapper.Map(subjectUpdateDto, subject);
 
@@ -88,7 +89,7 @@ public class SubjectService : ISubjectService
         var subject = await _context.Subjects.FindAsync(id);
 
         if (subject == null)
-            throw new KeyNotFoundException($"Subject with ID {id} not found.");
+            throw new EntityNotFoundException($"Subject with ID {id} not found.");
 
         subject.IsDeleted = true;
 

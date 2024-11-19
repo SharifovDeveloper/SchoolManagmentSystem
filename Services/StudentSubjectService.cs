@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Domain.DTOs.StudentSubject;
 using Domain.Entities;
+using Domain.Exeptions;
 using Domain.Helpers;
 using Domain.Interfaces.Services;
 using Domain.Pagniation;
@@ -64,7 +65,7 @@ public class StudentSubjectService : IStudentSubjectService
             .FirstOrDefaultAsync(ss => ss.Id == id);
 
         if (studentSubject == null)
-            throw new KeyNotFoundException($"StudentSubject with ID {id} was not found.");
+            throw new EntityNotFoundException($"StudentSubject with ID {id} was not found.");
 
         return _mapper.Map<StudentSubjectDto>(studentSubject);
     }
@@ -88,7 +89,7 @@ public class StudentSubjectService : IStudentSubjectService
         var studentSubject = await _context.StudentSubjects.FindAsync(id);
 
         if (studentSubject == null)
-            throw new KeyNotFoundException($"StudentSubject with ID {id} was not found.");
+            throw new EntityNotFoundException($"StudentSubject with ID {id} was not found.");
 
         await ValidateStudentAndSubjectAsync(updateDto.StudentId, updateDto.SubjectId);
 
@@ -105,7 +106,7 @@ public class StudentSubjectService : IStudentSubjectService
         var studentSubject = await _context.StudentSubjects.FindAsync(id);
 
         if (studentSubject == null)
-            throw new KeyNotFoundException($"StudentSubject with ID {id} was not found.");
+            throw new EntityNotFoundException($"StudentSubject with ID {id} was not found.");
 
         studentSubject.IsDeleted = true;
         _context.StudentSubjects.Update(studentSubject);
@@ -133,7 +134,7 @@ public class StudentSubjectService : IStudentSubjectService
         }
 
         if (errors.Any())
-            throw new KeyNotFoundException(string.Join(" ", errors));
+            throw new EntityNotFoundException(string.Join(" ", errors));
     }
 
     private IQueryable<StudentSubject> ApplyFilters(IQueryable<StudentSubject> query, StudentSubjectResourceParameters parameters)
