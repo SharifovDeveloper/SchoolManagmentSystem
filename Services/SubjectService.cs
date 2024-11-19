@@ -28,37 +28,17 @@ public class SubjectService : ISubjectService
             .AsNoTracking()
             .AsQueryable();
 
-        query = query.ApplyDateFilters(
-        subjectResourceParameters.CreatedDateFrom,
-        subjectResourceParameters.CreatedDateTo,
-        subjectResourceParameters.LastUpdatedDateFrom,
-        subjectResourceParameters.LastUpdatedDateTo);
-
-        query = query.ApplyIsDeletedFilter(subjectResourceParameters.IsDeleted);
-
-        if (subjectResourceParameters.GradeLevel.HasValue)
-        {
-            query = query.Where(x => x.GradeLevel == subjectResourceParameters.GradeLevel);
-        }
+        query = ApplyFilters(query, subjectResourceParameters);
 
         if (!string.IsNullOrEmpty(subjectResourceParameters.OrderBy))
         {
-            query = subjectResourceParameters.OrderBy.ToLowerInvariant() switch
-            {
-                "name" => query.OrderBy(x => x.Name),
-                "namedesc" => query.OrderByDescending(x => x.Name),
-                "gradelevel" => query.OrderBy(s => s.GradeLevel),
-                "gradeleveldesc" => query.OrderByDescending(s => s.GradeLevel),
-                _ => query.OrderBy(x => x.Id),
-            };
+            query = ApplyOrdering(query, subjectResourceParameters);
         }
 
         var subjects = await query.ToPaginatedListAsync(subjectResourceParameters.PageSize, subjectResourceParameters.PageNumber);
-
         var subjectDtos = _mapper.Map<List<SubjectDto>>(subjects);
 
         var paginatedResult = new PaginatedList<SubjectDto>(subjectDtos, subjects.TotalCount, subjects.CurrentPage, subjects.PageSize);
-
         return paginatedResult.ToResponse();
     }
 
@@ -71,9 +51,7 @@ public class SubjectService : ISubjectService
         if (subject == null)
             throw new KeyNotFoundException($"Subject with ID {id} not found.");
 
-        var subjectDto = _mapper.Map<SubjectDto>(subject);
-
-        return subjectDto;
+        return _mapper.Map<SubjectDto>(subject);
     }
 
     public async Task<SubjectDto> CreateSubjectAsync(SubjectCreateDto subjectCreateDto)
@@ -86,9 +64,7 @@ public class SubjectService : ISubjectService
         await _context.Subjects.AddAsync(subject);
         await _context.SaveChangesAsync();
 
-        var subjectDto = _mapper.Map<SubjectDto>(subject);
-
-        return subjectDto;
+        return _mapper.Map<SubjectDto>(subject);
     }
 
     public async Task<SubjectDto> UpdateSubjectAsync(int id, SubjectUpdateDto subjectUpdateDto)
@@ -104,14 +80,13 @@ public class SubjectService : ISubjectService
 
         await _context.SaveChangesAsync();
 
-        var subjectDto = _mapper.Map<SubjectDto>(subject);
-
-        return subjectDto;
+        return _mapper.Map<SubjectDto>(subject);
     }
 
     public async Task DeleteSubjectAsync(int id)
     {
         var subject = await _context.Subjects.FindAsync(id);
+
         if (subject == null)
             throw new KeyNotFoundException($"Subject with ID {id} not found.");
 
@@ -119,5 +94,31 @@ public class SubjectService : ISubjectService
 
         _context.Subjects.Update(subject);
         await _context.SaveChangesAsync();
+    }
+
+    private IQueryable<Subject> ApplyFilters(IQueryable<Subject> query, SubjectResourceParameters parameters)
+    {
+        query = query.ApplyDateFilters(
+            parameters.CreatedDateFrom, parameters.CreatedDateTo,
+            parameters.LastUpdatedDateFrom, parameters.LastUpdatedDateTo
+        );
+        query = query.ApplyIsDeletedFilter(parameters.IsDeleted);
+
+        if (parameters.GradeLevel.HasValue)
+            query = query.Where(s => s.GradeLevel == parameters.GradeLevel.Value);
+
+        return query;
+    }
+
+    private IQueryable<Subject> ApplyOrdering(IQueryable<Subject> query, SubjectResourceParameters parameters)
+    {
+        return parameters.OrderBy.ToLowerInvariant() switch
+        {
+            "name" => query.OrderBy(s => s.Name),
+            "namedesc" => query.OrderByDescending(s => s.Name),
+            "gradelevel" => query.OrderBy(s => s.GradeLevel),
+            "gradeleveldesc" => query.OrderByDescending(s => s.GradeLevel),
+            _ => query.OrderBy(s => s.Id),
+        };
     }
 }

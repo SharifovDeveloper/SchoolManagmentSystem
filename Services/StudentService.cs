@@ -28,47 +28,11 @@ public class StudentService : IStudentService
         var query = _context.Students
             .AsNoTracking()
             .Include(s => s.StudentSubjects)
-            .ThenInclude(ss => ss.Subject)
+                .ThenInclude(ss => ss.Subject)
             .Include(s => s.City)
             .AsQueryable();
 
-        query = query.ApplyDateFilters(
-        studentResourceParameters.CreatedDateFrom,
-        studentResourceParameters.CreatedDateTo,
-        studentResourceParameters.LastUpdatedDateFrom,
-        studentResourceParameters.LastUpdatedDateTo);
-
-        query = query.ApplyIsDeletedFilter(studentResourceParameters.IsDeleted);
-
-        if (studentResourceParameters.BirthDateFrom.HasValue)
-        {
-            query = query.Where(s => s.BirthDate >= studentResourceParameters.BirthDateFrom.Value);
-        }
-
-        if (studentResourceParameters.BirthDateTo.HasValue)
-        {
-            query = query.Where(s => s.BirthDate <= studentResourceParameters.BirthDateTo.Value);
-        }
-
-        if (studentResourceParameters.Gender.HasValue)
-        {
-            query = query.Where(s => s.Gender == studentResourceParameters.Gender.Value);
-        }
-
-        if (studentResourceParameters.CurrentGradeLevel.HasValue)
-        {
-            query = query.Where(s => s.CurrentGradeLevel == studentResourceParameters.CurrentGradeLevel.Value);
-        }
-
-        if (studentResourceParameters.DepartmentId.HasValue)
-        {
-            query = query.Where(s => s.DepartmentId == studentResourceParameters.DepartmentId.Value);
-        }
-
-        if (studentResourceParameters.CityId.HasValue)
-        {
-            query = query.Where(s => s.CityId == studentResourceParameters.CityId.Value);
-        }
+        query = ApplyFilters(query, studentResourceParameters);
 
         if (!string.IsNullOrWhiteSpace(studentResourceParameters.SearchString))
         {
@@ -77,20 +41,10 @@ public class StudentService : IStudentService
 
         if (!string.IsNullOrEmpty(studentResourceParameters.OrderBy))
         {
-            query = studentResourceParameters.OrderBy.ToLowerInvariant() switch
-            {
-                "mark" => query.OrderBy(s => s.StudentSubjects.Max(ss => ss.Mark)),
-                "markdesc" => query.OrderByDescending(s => s.StudentSubjects.Max(ss => ss.Mark)),
-                "grade" => query.OrderBy(s => s.CurrentGradeLevel),
-                "gradedesc" => query.OrderByDescending(s => s.CurrentGradeLevel),
-                "age" => query.OrderBy(s => DateTime.Now.Year - s.BirthDate.Year),
-                "agedesc" => query.OrderByDescending(s => DateTime.Now.Year - s.BirthDate.Year),
-                _ => query.OrderBy(s => s.Id),
-            };
+            query = ApplyOrdering(query, studentResourceParameters);
         }
 
         var students = await query.ToPaginatedListAsync(studentResourceParameters.PageSize, studentResourceParameters.PageNumber);
-
         var studentDtos = _mapper.Map<List<StudentDto>>(students);
 
         var paginatedResult = new PaginatedList<StudentDto>(studentDtos, students.TotalCount, students.CurrentPage, students.PageSize);
@@ -101,7 +55,7 @@ public class StudentService : IStudentService
     {
         var subject = await _context.Subjects.FindAsync(subjectId);
 
-        if (subject is null)
+        if (subject == null)
             throw new KeyNotFoundException($"Subject with ID {subjectId} was not found.");
 
         var studentNames = await _context.StudentSubjects
@@ -120,7 +74,7 @@ public class StudentService : IStudentService
     {
         var student = await _context.Students.FindAsync(studentId);
 
-        if (student is null)
+        if (student == null)
             throw new KeyNotFoundException($"Student with ID {studentId} was not found.");
 
         var subjectNames = await _context.StudentSubjects
@@ -141,9 +95,7 @@ public class StudentService : IStudentService
         if (student == null)
             throw new KeyNotFoundException($"Student with ID {id} was not found.");
 
-        var studentDto = _mapper.Map<StudentDto>(student);
-
-        return studentDto;
+        return _mapper.Map<StudentDto>(student);
     }
 
     public async Task<StudentDto> CreateStudentAsync(StudentCreateDto studentCreateDto)
@@ -151,43 +103,37 @@ public class StudentService : IStudentService
         await ValidateStudentDataAsync(studentCreateDto.CityId, studentCreateDto.DepartmentId, studentCreateDto.Gender);
 
         var student = _mapper.Map<Student>(studentCreateDto);
-
         student.CreatedDate = DateTime.Now;
         student.LastUpdatedDate = DateTime.Now;
 
         await _context.Students.AddAsync(student);
         await _context.SaveChangesAsync();
 
-        var studentDto = _mapper.Map<StudentDto>(student);
-
-        return studentDto;
+        return _mapper.Map<StudentDto>(student);
     }
 
     public async Task<StudentDto> UpdateStudentAsync(int id, StudentUpdateDto studentUpdateDto)
     {
         var student = await _context.Students.FindAsync(id);
 
-        if (student is null)
+        if (student == null)
             throw new KeyNotFoundException($"Student with ID {id} was not found.");
 
         await ValidateStudentDataAsync(studentUpdateDto.CityId, studentUpdateDto.DepartmentId, studentUpdateDto.Gender);
 
         _mapper.Map(studentUpdateDto, student);
-
         student.LastUpdatedDate = DateTime.Now;
 
         await _context.SaveChangesAsync();
 
-        var studentDto = _mapper.Map<StudentDto>(student);
-
-        return studentDto;
+        return _mapper.Map<StudentDto>(student);
     }
 
     public async Task DeleteStudentAsync(int id)
     {
         var student = await _context.Students.FindAsync(id);
 
-        if (student is null)
+        if (student == null)
             throw new KeyNotFoundException($"Student with ID {id} was not found.");
 
         student.IsDeleted = true;
@@ -217,4 +163,46 @@ public class StudentService : IStudentService
             throw new KeyNotFoundException(string.Join(" ", errors));
     }
 
+    private IQueryable<Student> ApplyFilters(IQueryable<Student> query, StudentResourceParameters parameters)
+    {
+        query = query.ApplyDateFilters(
+            parameters.CreatedDateFrom, parameters.CreatedDateTo,
+            parameters.LastUpdatedDateFrom, parameters.LastUpdatedDateTo
+        );
+        query = query.ApplyIsDeletedFilter(parameters.IsDeleted);
+
+        if (parameters.BirthDateFrom.HasValue)
+            query = query.Where(s => s.BirthDate >= parameters.BirthDateFrom.Value);
+
+        if (parameters.BirthDateTo.HasValue)
+            query = query.Where(s => s.BirthDate <= parameters.BirthDateTo.Value);
+
+        if (parameters.Gender.HasValue)
+            query = query.Where(s => s.Gender == parameters.Gender.Value);
+
+        if (parameters.CurrentGradeLevel.HasValue)
+            query = query.Where(s => s.CurrentGradeLevel == parameters.CurrentGradeLevel.Value);
+
+        if (parameters.DepartmentId.HasValue)
+            query = query.Where(s => s.DepartmentId == parameters.DepartmentId.Value);
+
+        if (parameters.CityId.HasValue)
+            query = query.Where(s => s.CityId == parameters.CityId.Value);
+
+        return query;
+    }
+
+    private IQueryable<Student> ApplyOrdering(IQueryable<Student> query, StudentResourceParameters parameters)
+    {
+        return parameters.OrderBy.ToLowerInvariant() switch
+        {
+            "mark" => query.OrderBy(s => s.StudentSubjects.Max(ss => ss.Mark)),
+            "markdesc" => query.OrderByDescending(s => s.StudentSubjects.Max(ss => ss.Mark)),
+            "grade" => query.OrderBy(s => s.CurrentGradeLevel),
+            "gradedesc" => query.OrderByDescending(s => s.CurrentGradeLevel),
+            "age" => query.OrderBy(s => DateTime.Now.Year - s.BirthDate.Year),
+            "agedesc" => query.OrderByDescending(s => DateTime.Now.Year - s.BirthDate.Year),
+            _ => query.OrderBy(s => s.Id),
+        };
+    }
 }

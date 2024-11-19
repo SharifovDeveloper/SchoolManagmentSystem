@@ -26,47 +26,25 @@ public class DepartmentService : IDepartmentService
     {
         var query = _context.Departments
             .AsNoTracking()
+            .Include(d => d.Students)
             .AsQueryable();
 
-        query = query.ApplyDateFilters(
-        departmentResourceParameters.CreatedDateFrom,
-        departmentResourceParameters.CreatedDateTo,
-        departmentResourceParameters.LastUpdatedDateFrom,
-        departmentResourceParameters.LastUpdatedDateTo);
-
-        query = query.ApplyIsDeletedFilter(departmentResourceParameters.IsDeleted);
-
-        if (departmentResourceParameters.MinStudentCount.HasValue)
-        {
-            query = query.Where(x => x.Students.Count >= departmentResourceParameters.MinStudentCount.Value);
-        }
-
-        if (departmentResourceParameters.MaxStudentCount.HasValue)
-        {
-            query = query.Where(x => x.Students.Count <= departmentResourceParameters.MaxStudentCount.Value);
-        }
+        query = ApplyFilters(query, departmentResourceParameters);
 
         if (!string.IsNullOrWhiteSpace(departmentResourceParameters.SearchString))
         {
-            query = query.Where(x => x.Name.Contains(departmentResourceParameters.SearchString));
+            query = query.Where(d => d.Name.Contains(departmentResourceParameters.SearchString));
         }
 
         if (!string.IsNullOrEmpty(departmentResourceParameters.OrderBy))
         {
-            query = departmentResourceParameters.OrderBy.ToLowerInvariant() switch
-            {
-                "name" => query.OrderBy(x => x.Name),
-                "namedesc" => query.OrderByDescending(x => x.Name),
-                _ => query.OrderBy(x => x.Id),
-            };
+            query = ApplyOrdering(query, departmentResourceParameters);
         }
 
         var departments = await query.ToPaginatedListAsync(departmentResourceParameters.PageSize, departmentResourceParameters.PageNumber);
-
         var departmentDtos = _mapper.Map<List<DepartmentDto>>(departments);
 
         var paginatedResult = new PaginatedList<DepartmentDto>(departmentDtos, departments.TotalCount, departments.CurrentPage, departments.PageSize);
-
         return paginatedResult.ToResponse();
     }
 
@@ -74,29 +52,24 @@ public class DepartmentService : IDepartmentService
     {
         var department = await _context.Departments
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == id);
+            .FirstOrDefaultAsync(d => d.Id == id);
 
         if (department == null)
             throw new KeyNotFoundException($"Department with ID {id} was not found.");
 
-        var departmentDto = _mapper.Map<DepartmentDto>(department);
-
-        return departmentDto;
+        return _mapper.Map<DepartmentDto>(department);
     }
 
     public async Task<DepartmentDto> CreateDepartmentAsync(DepartmentCreateDto departmentCreateDto)
     {
         var department = _mapper.Map<Department>(departmentCreateDto);
-
         department.CreatedDate = DateTime.Now;
         department.LastUpdatedDate = DateTime.Now;
 
         await _context.Departments.AddAsync(department);
         await _context.SaveChangesAsync();
 
-        var departmentDto = _mapper.Map<DepartmentDto>(department);
-
-        return departmentDto;
+        return _mapper.Map<DepartmentDto>(department);
     }
 
     public async Task<DepartmentDto> UpdateDepartmentAsync(int id, DepartmentUpdateDto departmentUpdateDto)
@@ -107,26 +80,56 @@ public class DepartmentService : IDepartmentService
             throw new KeyNotFoundException($"Department with ID {id} was not found.");
 
         _mapper.Map(departmentUpdateDto, department);
-
         department.LastUpdatedDate = DateTime.Now;
 
         await _context.SaveChangesAsync();
 
-        var departmentDto = _mapper.Map<DepartmentDto>(department);
-
-        return departmentDto;
+        return _mapper.Map<DepartmentDto>(department);
     }
 
     public async Task DeleteDepartmentAsync(int id)
     {
         var department = await _context.Departments.FindAsync(id);
 
-        if (department is null)
+        if (department == null)
             throw new KeyNotFoundException($"Department with ID {id} was not found.");
 
         department.IsDeleted = true;
 
         _context.Departments.Update(department);
         await _context.SaveChangesAsync();
+    }
+
+    private IQueryable<Department> ApplyFilters(IQueryable<Department> query, DepartmentResourceParameters parameters)
+    {
+        query = query.ApplyDateFilters(
+            parameters.CreatedDateFrom, parameters.CreatedDateTo,
+            parameters.LastUpdatedDateFrom, parameters.LastUpdatedDateTo
+        );
+        query = query.ApplyIsDeletedFilter(parameters.IsDeleted);
+
+        if (parameters.MinStudentCount.HasValue)
+        {
+            query = query.Where(d => d.Students.Count >= parameters.MinStudentCount.Value);
+        }
+
+        if (parameters.MaxStudentCount.HasValue)
+        {
+            query = query.Where(d => d.Students.Count <= parameters.MaxStudentCount.Value);
+        }
+
+        return query;
+    }
+
+    private IQueryable<Department> ApplyOrdering(IQueryable<Department> query, DepartmentResourceParameters parameters)
+    {
+        return parameters.OrderBy.ToLowerInvariant() switch
+        {
+            "name" => query.OrderBy(d => d.Name),
+            "namedesc" => query.OrderByDescending(d => d.Name),
+            "studentscount" => query.OrderBy(d => d.Students.Count),
+            "studentscountdesc" => query.OrderByDescending(d => d.Students.Count),
+            _ => query.OrderBy(d => d.Id),
+        };
     }
 }

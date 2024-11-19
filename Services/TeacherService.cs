@@ -22,7 +22,7 @@ public class TeacherService : ITeacherService
         _mapper = mapper;
         _context = context;
     }
-   
+
     public async Task<GetBaseResponse<TeacherDto>> GetTeachersAsync(TeacherResourceParameters teacherResourceParameters)
     {
         var query = _context.Teachers
@@ -31,55 +31,20 @@ public class TeacherService : ITeacherService
             .Include(t => t.City)
             .AsQueryable();
 
-        query = query.ApplyDateFilters(
-        teacherResourceParameters.CreatedDateFrom,
-        teacherResourceParameters.CreatedDateTo,
-        teacherResourceParameters.LastUpdatedDateFrom,
-        teacherResourceParameters.LastUpdatedDateTo);
-
-        query = query.ApplyIsDeletedFilter(teacherResourceParameters.IsDeleted);
-
-        if (teacherResourceParameters.BirthDateFrom.HasValue)
-        {
-            query = query.Where(t => t.BirthDate >= teacherResourceParameters.BirthDateFrom.Value);
-        }
-
-        if (teacherResourceParameters.BirthDateTo.HasValue)
-        {
-            query = query.Where(t => t.BirthDate <= teacherResourceParameters.BirthDateTo.Value);
-        }
-
-        if (teacherResourceParameters.Gender.HasValue)
-        {
-            query = query.Where(t => t.Gender == teacherResourceParameters.Gender.Value);
-        }
-
-        if (teacherResourceParameters.CityId.HasValue)
-        {
-            query = query.Where(t => t.CityId == teacherResourceParameters.CityId.Value);
-        }
+        query = ApplyFilters(query, teacherResourceParameters);
 
         if (!string.IsNullOrEmpty(teacherResourceParameters.OrderBy))
         {
-            query = teacherResourceParameters.OrderBy.ToLowerInvariant() switch
-            {
-                "name" => query.OrderBy(t => t.Name),
-                "namedesc" => query.OrderByDescending(t => t.Name),
-                "birthdate" => query.OrderBy(t => t.BirthDate),
-                "birthdatedesc" => query.OrderByDescending(t => t.BirthDate),
-                _ => query.OrderBy(t => t.Id),
-            };
+            query = ApplyOrdering(query, teacherResourceParameters);
         }
 
         var teachers = await query.ToPaginatedListAsync(teacherResourceParameters.PageSize, teacherResourceParameters.PageNumber);
-
         var teacherDtos = _mapper.Map<List<TeacherDto>>(teachers);
 
         var paginatedResult = new PaginatedList<TeacherDto>(teacherDtos, teachers.TotalCount, teachers.CurrentPage, teachers.PageSize);
-
         return paginatedResult.ToResponse();
     }
-  
+
     public async Task<List<string>> GetTeachersForTop5StudentsWithHighestMarksAsync()
     {
         var topStudents = await _context.StudentSubjects
@@ -104,7 +69,7 @@ public class TeacherService : ITeacherService
 
         return teacherNames;
     }
-   
+
     public async Task<List<string>> GetTeachersForTop5StudentsWithLowestMarksAsync()
     {
         var bottomStudents = await _context.StudentSubjects
@@ -129,12 +94,12 @@ public class TeacherService : ITeacherService
 
         return teacherNames;
     }
- 
+
     public async Task<List<string>> GetSubjectsByTeacherIdAsync(int teacherId)
     {
         var teacher = await _context.Teachers.FindAsync(teacherId);
 
-        if (teacher is null)
+        if (teacher == null)
             throw new KeyNotFoundException($"Teacher with ID {teacherId} was not found.");
 
         var subjectNames = await _context.TeacherSubjects
@@ -145,7 +110,7 @@ public class TeacherService : ITeacherService
 
         return subjectNames;
     }
-   
+
     public async Task<TeacherDto?> GetTeacherByIdAsync(int id)
     {
         var teacher = await _context.Teachers
@@ -153,11 +118,9 @@ public class TeacherService : ITeacherService
             .FirstOrDefaultAsync(x => x.Id == id);
 
         if (teacher == null)
-            throw new KeyNotFoundException($"Teacher with ID {id} not found.");
+            throw new KeyNotFoundException($"Teacher with ID {id} was not found.");
 
-        var teacherDto = _mapper.Map<TeacherDto>(teacher);
-
-        return teacherDto;
+        return _mapper.Map<TeacherDto>(teacher);
     }
 
     public async Task<TeacherDto> CreateTeacherAsync(TeacherCreateDto teacherCreateDto)
@@ -165,16 +128,13 @@ public class TeacherService : ITeacherService
         await ValidateTeacherDataAsync(teacherCreateDto.CityId, teacherCreateDto.Gender);
 
         var teacher = _mapper.Map<Teacher>(teacherCreateDto);
-
         teacher.CreatedDate = DateTime.Now;
         teacher.LastUpdatedDate = DateTime.Now;
 
         await _context.Teachers.AddAsync(teacher);
         await _context.SaveChangesAsync();
 
-        var teacherDto = _mapper.Map<TeacherDto>(teacher);
-
-        return teacherDto;
+        return _mapper.Map<TeacherDto>(teacher);
     }
 
     public async Task<TeacherDto> UpdateTeacherAsync(int id, TeacherUpdateDto teacherUpdateDto)
@@ -182,19 +142,16 @@ public class TeacherService : ITeacherService
         var teacher = await _context.Teachers.FindAsync(id);
 
         if (teacher == null)
-            throw new KeyNotFoundException($"Teacher with ID {id} not found.");
+            throw new KeyNotFoundException($"Teacher with ID {id} was not found.");
 
         await ValidateTeacherDataAsync(teacherUpdateDto.CityId, teacherUpdateDto.Gender);
 
         _mapper.Map(teacherUpdateDto, teacher);
-
         teacher.LastUpdatedDate = DateTime.Now;
 
         await _context.SaveChangesAsync();
 
-        var teacherDto = _mapper.Map<TeacherDto>(teacher);
-        
-        return teacherDto;
+        return _mapper.Map<TeacherDto>(teacher);
     }
 
     public async Task DeleteTeacherAsync(int id)
@@ -202,7 +159,7 @@ public class TeacherService : ITeacherService
         var teacher = await _context.Teachers.FindAsync(id);
 
         if (teacher == null)
-            throw new KeyNotFoundException($"Teacher with ID {id} not found.");
+            throw new KeyNotFoundException($"Teacher with ID {id} was not found.");
 
         teacher.IsDeleted = true;
 
@@ -224,5 +181,40 @@ public class TeacherService : ITeacherService
 
         if (errors.Any())
             throw new KeyNotFoundException(string.Join(" ", errors));
+    }
+
+    private IQueryable<Teacher> ApplyFilters(IQueryable<Teacher> query, TeacherResourceParameters parameters)
+    {
+        query = query.ApplyDateFilters(
+            parameters.CreatedDateFrom, parameters.CreatedDateTo,
+            parameters.LastUpdatedDateFrom, parameters.LastUpdatedDateTo
+        );
+        query = query.ApplyIsDeletedFilter(parameters.IsDeleted);
+
+        if (parameters.BirthDateFrom.HasValue)
+            query = query.Where(t => t.BirthDate >= parameters.BirthDateFrom.Value);
+
+        if (parameters.BirthDateTo.HasValue)
+            query = query.Where(t => t.BirthDate <= parameters.BirthDateTo.Value);
+
+        if (parameters.Gender.HasValue)
+            query = query.Where(t => t.Gender == parameters.Gender.Value);
+
+        if (parameters.CityId.HasValue)
+            query = query.Where(t => t.CityId == parameters.CityId.Value);
+
+        return query;
+    }
+
+    private IQueryable<Teacher> ApplyOrdering(IQueryable<Teacher> query, TeacherResourceParameters parameters)
+    {
+        return parameters.OrderBy.ToLowerInvariant() switch
+        {
+            "name" => query.OrderBy(t => t.Name),
+            "namedesc" => query.OrderByDescending(t => t.Name),
+            "birthdate" => query.OrderBy(t => t.BirthDate),
+            "birthdatedesc" => query.OrderByDescending(t => t.BirthDate),
+            _ => query.OrderBy(t => t.Id),
+        };
     }
 }

@@ -22,11 +22,11 @@ public class StudentSubjectService : IStudentSubjectService
         _context = context;
     }
 
-    public async Task<GetBaseResponse<StudentSubjectDto>> GetStudentSubjectsAsync(StudentSubjectResourceParameters studentSubjectResourceParameters)
+    public async Task<GetBaseResponse<StudentSubjectDto>> GetStudentSubjectsAsync(StudentSubjectResourceParameters resourceParameters)
     {
-        if (studentSubjectResourceParameters.StudentId.HasValue || studentSubjectResourceParameters.SubjectId.HasValue)
+        if (resourceParameters.StudentId.HasValue || resourceParameters.SubjectId.HasValue)
         {
-            await ValidateStudentAndSubjectAsync(studentSubjectResourceParameters.StudentId, studentSubjectResourceParameters.SubjectId);
+            await ValidateStudentAndSubjectAsync(resourceParameters.StudentId, resourceParameters.SubjectId);
         }
 
         var query = _context.StudentSubjects
@@ -35,50 +35,23 @@ public class StudentSubjectService : IStudentSubjectService
             .Include(ss => ss.Subject)
             .AsQueryable();
 
-        query = query.ApplyDateFilters(
-        studentSubjectResourceParameters.CreatedDateFrom,
-        studentSubjectResourceParameters.CreatedDateTo,
-        studentSubjectResourceParameters.LastUpdatedDateFrom,
-        studentSubjectResourceParameters.LastUpdatedDateTo);
+        query = ApplyFilters(query, resourceParameters);
 
-        query = query.ApplyIsDeletedFilter(studentSubjectResourceParameters.IsDeleted);
-
-        if (studentSubjectResourceParameters.StudentId.HasValue)
+        if (!string.IsNullOrWhiteSpace(resourceParameters.SearchString))
         {
-            query = query.Where(ss => ss.StudentId == studentSubjectResourceParameters.StudentId.Value);
+            query = query.Where(ss => ss.Student.Name.Contains(resourceParameters.SearchString)
+                                    || ss.Subject.Name.Contains(resourceParameters.SearchString));
         }
 
-        if (studentSubjectResourceParameters.SubjectId.HasValue)
+        if (!string.IsNullOrEmpty(resourceParameters.OrderBy))
         {
-            query = query.Where(ss => ss.SubjectId == studentSubjectResourceParameters.SubjectId.Value);
+            query = ApplyOrdering(query, resourceParameters);
         }
 
-        if (studentSubjectResourceParameters.MinMark.HasValue)
-        {
-            query = query.Where(ss => ss.Mark >= studentSubjectResourceParameters.MinMark.Value);
-        }
+        var paginatedList = await query.ToPaginatedListAsync(resourceParameters.PageSize, resourceParameters.PageNumber);
+        var dtoList = _mapper.Map<List<StudentSubjectDto>>(paginatedList);
 
-        if (studentSubjectResourceParameters.MaxMark.HasValue)
-        {
-            query = query.Where(ss => ss.Mark <= studentSubjectResourceParameters.MaxMark.Value);
-        }
-
-        if (!string.IsNullOrEmpty(studentSubjectResourceParameters.OrderBy))
-        {
-            query = studentSubjectResourceParameters.OrderBy.ToLowerInvariant() switch
-            {
-                "mark" => query.OrderBy(ss => ss.Mark),
-                "markdesc" => query.OrderByDescending(ss => ss.Mark),
-                _ => query.OrderBy(ss => ss.Student.Id),
-            };
-        }
-
-        var studentSubjects = await query.ToPaginatedListAsync(studentSubjectResourceParameters.PageSize, studentSubjectResourceParameters.PageNumber);
-
-        var studentSubjectDtos = _mapper.Map<List<StudentSubjectDto>>(studentSubjects);
-
-        var paginatedResult = new PaginatedList<StudentSubjectDto>(studentSubjectDtos, studentSubjects.TotalCount, studentSubjects.CurrentPage, studentSubjects.PageSize);
-
+        var paginatedResult = new PaginatedList<StudentSubjectDto>(dtoList, paginatedList.TotalCount, paginatedList.CurrentPage, paginatedList.PageSize);
         return paginatedResult.ToResponse();
     }
 
@@ -90,60 +63,51 @@ public class StudentSubjectService : IStudentSubjectService
             .Include(ss => ss.Subject)
             .FirstOrDefaultAsync(ss => ss.Id == id);
 
-        if (studentSubject is null)
+        if (studentSubject == null)
             throw new KeyNotFoundException($"StudentSubject with ID {id} was not found.");
 
-        var studentSubjectDto = _mapper.Map<StudentSubjectDto>(studentSubject);
-
-        return studentSubjectDto;
+        return _mapper.Map<StudentSubjectDto>(studentSubject);
     }
 
-    public async Task<StudentSubjectDto> CreateStudentSubjectAsync(StudentSubjectCreateDto studentSubjectCreateDto)
+    public async Task<StudentSubjectDto> CreateStudentSubjectAsync(StudentSubjectCreateDto createDto)
     {
-        await ValidateStudentAndSubjectAsync(studentSubjectCreateDto.StudentId, studentSubjectCreateDto.SubjectId);
+        await ValidateStudentAndSubjectAsync(createDto.StudentId, createDto.SubjectId);
 
-        var studentSubject = _mapper.Map<StudentSubject>(studentSubjectCreateDto);
-
+        var studentSubject = _mapper.Map<StudentSubject>(createDto);
         studentSubject.CreatedDate = DateTime.Now;
         studentSubject.LastUpdatedDate = DateTime.Now;
 
         await _context.StudentSubjects.AddAsync(studentSubject);
         await _context.SaveChangesAsync();
 
-        var studentSubjectDto = _mapper.Map<StudentSubjectDto>(studentSubject);
-
-        return studentSubjectDto;
+        return _mapper.Map<StudentSubjectDto>(studentSubject);
     }
 
-    public async Task<StudentSubjectDto> UpdateStudentSubjectAsync(int id, StudentSubjectUpdateDto studentSubjectUpdateDto)
+    public async Task<StudentSubjectDto> UpdateStudentSubjectAsync(int id, StudentSubjectUpdateDto updateDto)
     {
         var studentSubject = await _context.StudentSubjects.FindAsync(id);
 
-        if (studentSubject is null)
+        if (studentSubject == null)
             throw new KeyNotFoundException($"StudentSubject with ID {id} was not found.");
 
-        await ValidateStudentAndSubjectAsync(studentSubjectUpdateDto.StudentId, studentSubjectUpdateDto.SubjectId);
+        await ValidateStudentAndSubjectAsync(updateDto.StudentId, updateDto.SubjectId);
 
-        _mapper.Map(studentSubjectUpdateDto, studentSubject);
-
+        _mapper.Map(updateDto, studentSubject);
         studentSubject.LastUpdatedDate = DateTime.Now;
 
         await _context.SaveChangesAsync();
 
-        var studentSubjectDto = _mapper.Map<StudentSubjectDto>(studentSubject);
-
-        return studentSubjectDto;
+        return _mapper.Map<StudentSubjectDto>(studentSubject);
     }
 
     public async Task DeleteStudentSubjectAsync(int id)
     {
         var studentSubject = await _context.StudentSubjects.FindAsync(id);
 
-        if (studentSubject is null)
-            throw new KeyNotFoundException($"Student subject with ID {id} was not found.");
+        if (studentSubject == null)
+            throw new KeyNotFoundException($"StudentSubject with ID {id} was not found.");
 
         studentSubject.IsDeleted = true;
-
         _context.StudentSubjects.Update(studentSubject);
         await _context.SaveChangesAsync();
     }
@@ -151,22 +115,60 @@ public class StudentSubjectService : IStudentSubjectService
     private async Task ValidateStudentAndSubjectAsync(int? studentId, int? subjectId)
     {
         var errors = new List<string>();
-
+   
         if (studentId.HasValue)
         {
-            var studentExists = await _context.Students.AnyAsync(s => s.Id == studentId.Value);
-            if (!studentExists)
+            var studentExists = await _context.Students.AnyAsync(s => s.Id == studentId);
+            if(!studentExists)
                 errors.Add($"Student with ID {studentId.Value} not found.");
-        }
 
+        }
+        
         if (subjectId.HasValue)
         {
-            var subjectExists = await _context.Subjects.AnyAsync(s => s.Id == subjectId.Value);
-            if (!subjectExists)
+            var subjectExists = await _context.Subjects.AnyAsync(s => s.Id == subjectId);
+            if(!subjectExists)
                 errors.Add($"Subject with ID {subjectId.Value} not found.");
+
         }
 
         if (errors.Any())
             throw new KeyNotFoundException(string.Join(" ", errors));
+    }
+
+    private IQueryable<StudentSubject> ApplyFilters(IQueryable<StudentSubject> query, StudentSubjectResourceParameters parameters)
+    {
+        query = query.ApplyDateFilters(
+            parameters.CreatedDateFrom, parameters.CreatedDateTo,
+            parameters.LastUpdatedDateFrom, parameters.LastUpdatedDateTo
+        );
+
+        query = query.ApplyIsDeletedFilter(parameters.IsDeleted);
+
+        if (parameters.StudentId.HasValue)
+            query = query.Where(ss => ss.StudentId == parameters.StudentId.Value);
+
+        if (parameters.SubjectId.HasValue)
+            query = query.Where(ss => ss.SubjectId == parameters.SubjectId.Value);
+
+        if (parameters.MinMark.HasValue)
+            query = query.Where(ss => ss.Mark >= parameters.MinMark.Value);
+
+        if (parameters.MaxMark.HasValue)
+            query = query.Where(ss => ss.Mark <= parameters.MaxMark.Value);
+
+        return query;
+    }
+
+    private IQueryable<StudentSubject> ApplyOrdering(IQueryable<StudentSubject> query, StudentSubjectResourceParameters parameters)
+    {
+        return parameters.OrderBy.ToLowerInvariant() switch
+        {
+            "mark" => query.OrderBy(ss => ss.Mark),
+            "markdesc" => query.OrderByDescending(ss => ss.Mark),
+            "student" => query.OrderBy(ss => ss.Student.Name),
+            "studentdesc" => query.OrderByDescending(ss => ss.Student.Name),
+            _ => query.OrderBy(ss => ss.Id),
+        };
     }
 }
